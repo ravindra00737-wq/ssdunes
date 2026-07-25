@@ -1,12 +1,581 @@
-{
-  "rules": {
-    "nominations": {
-      ".read": true,
-      ".write": true
-    },
-    "votes": {
-      ".read": true,
-      ".write": true
-    }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee of the Month - Voting System</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+:root{--brand:#6d3063;--brand-light:#8b4f82;--bg:#f5f2f6;--card:#fff;--text:#333;--border:#e0d8e0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Book Antiqua',serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+.navbar{background:linear-gradient(135deg,var(--brand),var(--brand-light));color:#fff;padding:15px 30px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.navbar h1{font-size:1.5rem;}
+.nav-tabs{display:flex;gap:10px;flex-wrap:wrap;}
+.nav-tab{background:rgba(255,255,255,.2);color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:bold;transition:.25s;}
+.nav-tab:hover{background:rgba(255,255,255,.3);}
+.nav-tab.active{background:#fff;color:var(--brand);}
+
+.container{max-width:1200px;margin:30px auto;padding:0 20px;}
+.tab-content{display:none;animation:fade .3s;}
+.tab-content.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+.card{background:var(--card);border-radius:12px;padding:25px;box-shadow:0 4px 14px rgba(109,48,99,.08);border:1px solid var(--border);margin-bottom:20px;}
+.card h2{color:var(--brand);margin-bottom:15px;padding-bottom:8px;border-bottom:2px solid var(--brand-light);}
+.card h3{color:var(--brand);margin-bottom:12px;}
+
+label{display:block;margin:12px 0 6px;font-weight:bold;color:#555;}
+input[type=text],input[type=password],select,textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;font-size:1rem;background:#fff;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(109,48,99,.1);}
+textarea{resize:vertical;min-height:80px;}
+
+.btn{background:var(--brand);color:#fff;border:none;padding:12px 26px;border-radius:7px;cursor:pointer;font-family:inherit;font-weight:bold;font-size:1rem;transition:.25s;display:inline-flex;align-items:center;gap:7px;}
+.btn:hover{background:var(--brand-light);transform:translateY(-2px);box-shadow:0 6px 14px rgba(109,48,99,.3);}
+.btn-full{width:100%;justify-content:center;margin-top:18px;padding:14px;}
+.btn-success{background:#2e7d32;}
+.btn-success:hover{background:#388e3c;}
+.btn-danger{background:#a02c2c;}
+.btn-danger:hover{background:#c0392b;}
+.btn-sm{padding:6px 12px;font-size:.85rem;}
+.btn-outline{background:transparent;color:var(--brand);border:2px solid var(--brand);}
+.btn-outline:hover{background:var(--brand);color:#fff;}
+
+.dropzone{border:2.5px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:.25s;background:#fafafa;}
+.dropzone:hover,.dropzone.dragover{border-color:var(--brand);background:#f5eef5;}
+.preview-img{max-width:100%;max-height:150px;border-radius:8px;margin-top:10px;display:none;}
+
+.alert{padding:13px 18px;border-radius:8px;margin-bottom:15px;display:none;font-weight:500;}
+.alert-success{background:#d4edda;color:#155724;border:1px solid #a3d9b1;}
+.alert-error{background:#f8d7da;color:#721c24;border:1px solid #f1aeb5;}
+
+.nominee-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;}
+.nominee-card{background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(109,48,99,.1);transition:.3s;}
+.nominee-card:hover{transform:translateY(-4px);}
+.nominee-card img{width:100%;height:240px;object-fit:cover;background:#eee;}
+.nominee-info{padding:20px;}
+.nominee-info h3{color:var(--brand);margin-bottom:8px;}
+.nominee-meta{font-size:.88rem;color:#666;margin-bottom:10px;}
+.nominee-meta strong{color:var(--brand);}
+.rating-box{display:flex;align-items:center;gap:10px;padding:12px;background:#faf7fa;border-radius:8px;}
+.rating-box label{margin:0;color:var(--brand);font-weight:bold;}
+.rating-box input{width:70px;padding:8px;text-align:center;font-size:1.15rem;font-weight:bold;color:var(--brand);border:2px solid var(--border);border-radius:6px;}
+
+.cat-tabs{display:flex;gap:8px;margin-bottom:25px;flex-wrap:wrap;border-bottom:2px solid var(--border);}
+.cat-tab{padding:12px 22px;background:#f0e8f0;color:var(--brand);border:none;border-radius:8px 8px 0 0;cursor:pointer;font-family:inherit;font-weight:bold;}
+.cat-tab.active{background:var(--brand);color:#fff;}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px;}
+.stat{background:linear-gradient(135deg,var(--brand),var(--brand-light));color:#fff;padding:20px;border-radius:10px;text-align:center;}
+.stat .num{font-size:2rem;font-weight:bold;}
+.stat .lbl{font-size:.9rem;opacity:.9;}
+
+table{width:100%;border-collapse:collapse;margin-top:15px;}
+th,td{padding:12px;text-align:left;border-bottom:1px solid var(--border);}
+th{background:var(--brand);color:#fff;}
+.winner{background:rgba(109,48,99,.1);font-weight:bold;}
+
+.progress-bar{background:#e0d8e0;height:8px;border-radius:4px;overflow:hidden;margin:15px 0;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-light));transition:width .4s;}
+
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;}
+.modal.active{display:flex;}
+.modal-content{background:#fff;padding:30px;border-radius:12px;max-width:400px;width:90%;}
+
+.nominee-item{display:flex;gap:12px;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);}
+.nominee-item img{width:60px;height:60px;object-fit:cover;border-radius:6px;}
+.nominee-item .info{flex:1;}
+.nominee-item .info strong{color:var(--brand);}
+.nominee-item .info small{color:#666;display:block;}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <h1>🏆 Employee of the Month</h1>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('nominate', this)"> Nominate</button>
+    <button class="nav-tab" onclick="switchTab('vote', this)">🗳️ Vote</button>
+    <button class="nav-tab" onclick="showAdminLogin()">⚙️ Admin</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div id="alert-success" class="alert alert-success"></div>
+  <div id="alert-error" class="alert alert-error"></div>
+
+  <!-- NOMINATION TAB -->
+  <div id="tab-nominate" class="tab-content active">
+    <div class="card">
+      <h2>📝 Submit a Nomination</h2>
+      <p style="color:#777;margin-bottom:15px;">Leaders: Please nominate deserving team members.</p>
+      
+      <label>Your Name (Leader)</label>
+      <input type="text" id="nom-leader-name" placeholder="e.g., John Smith">
+      
+      <label>Your Department</label>
+      <input type="text" id="nom-leader-dept" placeholder="e.g., Front Office">
+      
+      <div style="margin-top:20px;padding-top:20px;border-top:2px solid var(--border);">
+        <h3>Nominee Details</h3>
+        
+        <label>Nominee Name</label>
+        <input type="text" id="nom-name" placeholder="e.g., Sarah Johnson">
+        
+        <label>Nominee Department</label>
+        <input type="text" id="nom-dept" placeholder="e.g., Housekeeping">
+        
+        <label>Category</label>
+        <select id="nom-category">
+          <option value="">-- Select Category --</option>
+          <option value="Host of the Month (FOH)">Host of the Month (FOH)</option>
+          <option value="Host of the Month (HOH)">Host of the Month (HOH)</option>
+          <option value="Leader of the Quarter">Leader of the Quarter</option>
+          <option value="Sustainability Hero of the Month">Sustainability Hero of the Month</option>
+        </select>
+        
+        <label>Short Description</label>
+        <textarea id="nom-desc" placeholder="Why does this person deserve the award?"></textarea>
+        
+        <label>Profile Picture (optional)</label>
+        <div class="dropzone" id="pic-drop">
+          <p>📷 Click or drag image here</p>
+          <input type="file" id="pic-file" accept="image/*" style="display:none">
+        </div>
+        <img id="pic-preview" class="preview-img">
+        
+        <button class="btn btn-full" onclick="submitNomination()">✅ Submit Nomination</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VOTING TAB -->
+  <div id="tab-vote" class="tab-content">
+    <div class="card" id="voter-info-card">
+      <h2>🗳️ Cast Your Vote</h2>
+      
+      <label>Your Name</label>
+      <input type="text" id="voter-name" placeholder="e.g., Michael Brown">
+      
+      <label>Your Department</label>
+      <input type="text" id="voter-dept" placeholder="e.g., Management">
+      
+      <button class="btn btn-full" onclick="startVoting()">Start Voting →</button>
+    </div>
+    
+    <div id="voting-interface" style="display:none;">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
+          <div><strong>Voting as:</strong> <span id="voter-display" style="color:var(--brand);"></span></div>
+          <div class="progress-text" id="progress-text">0 of 0 rated</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+        
+        <div class="cat-tabs" id="cat-tabs"></div>
+        <div id="nominee-list"></div>
+        
+        <button class="btn btn-success btn-full" onclick="submitVotes()">✅ Submit All Votes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN TAB -->
+  <div id="tab-admin" class="tab-content">
+    <div class="card">
+      <h2>️ Admin Dashboard</h2>
+      
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="num" id="stat-nominations">0</div>
+          <div class="lbl">Total Nominations</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="stat-votes">0</div>
+          <div class="lbl">Total Votes Cast</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="stat-voters">0</div>
+          <div class="lbl">Unique Voters</div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top:30px;">Live Nominations</h3>
+      <div id="admin-nominations"></div>
+      
+      <h3 style="margin-top:30px;">Live Voting Results</h3>
+      <div class="cat-tabs" id="admin-cat-tabs"></div>
+      <div id="admin-results"></div>
+      
+      <button class="btn btn-danger" style="margin-top:20px;" onclick="resetAllData()">️ Reset All Data</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Login Modal -->
+<div id="admin-modal" class="modal">
+  <div class="modal-content">
+    <h2 style="color:var(--brand);margin-bottom:15px;">⚙️ Admin Login</h2>
+    <label>Password</label>
+    <input type="password" id="admin-password" placeholder="Enter admin password">
+    <button class="btn btn-full" onclick="verifyAdmin()">Login</button>
+    <button class="btn btn-outline btn-full" onclick="closeAdminModal()" style="margin-top:10px;">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ============ FIREBASE CONFIG ============
+// ️ REPLACE THIS WITH YOUR ACTUAL FIREBASE CONFIG
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY_HERE",
+  authDomain: "sshostrecognition.firebaseapp.com",
+  databaseURL: "https://sshostrecognition-default-rtdb.firebaseio.com",
+  projectId: "sshostrecognition",
+  storageBucket: "sshostrecognition.appspot.com",
+  messagingSenderId: "717686789724",
+  appId: "YOUR_APP_ID_HERE"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ============ GLOBAL STATE ============
+let nominations = [];
+let votes = {};
+let categories = [
+  {id: 1, name: "Host of the Month (FOH)"},
+  {id: 2, name: "Host of the Month (HOH)"},
+  {id: 3, name: "Leader of the Quarter"},
+  {id: 4, name: "Sustainability Hero of the Month"}
+];
+let tempPic = '';
+let currentVoter = {name: '', dept: ''};
+let voterRatings = {};
+
+// ============ TAB SWITCHING ============
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+  
+  if (tab === 'vote') loadNomineesForVoting();
+  if (tab === 'admin') loadAdminDashboard();
+}
+
+function showAdminLogin() {
+  document.getElementById('admin-modal').classList.add('active');
+}
+
+function closeAdminModal() {
+  document.getElementById('admin-modal').classList.remove('active');
+  document.getElementById('admin-password').value = '';
+}
+
+function verifyAdmin() {
+  const password = document.getElementById('admin-password').value;
+  // ⚠️ CHANGE THIS PASSWORD
+  if (password === 'Admin@2026') {
+    closeAdminModal();
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-admin').classList.add('active');
+    document.querySelectorAll('.nav-tab')[2].classList.add('active');
+    loadAdminDashboard();
+  } else {
+    showAlert('Invalid password!', 'error');
   }
 }
+
+// ============ ALERTS ============
+function showAlert(msg, type) {
+  const el = document.getElementById('alert-' + type);
+  el.innerText = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+// ============ IMAGE UPLOAD ============
+const dz = document.getElementById('pic-drop');
+const fi = document.getElementById('pic-file');
+const pv = document.getElementById('pic-preview');
+
+dz.onclick = () => fi.click();
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('dragover'); };
+dz.ondragleave = () => dz.classList.remove('dragover');
+dz.ondrop = e => { e.preventDefault(); dz.classList.remove('dragover'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); };
+fi.onchange = e => { if(e.target.files[0]) handleFile(e.target.files[0]); };
+
+function handleFile(f) {
+  if (!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+  const r = new FileReader();
+  r.onload = ev => { pv.src = ev.target.result; pv.style.display = 'block'; tempPic = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+// ============ NOMINATION SUBMISSION ============
+function submitNomination() {
+  const leaderName = document.getElementById('nom-leader-name').value.trim();
+  const leaderDept = document.getElementById('nom-leader-dept').value.trim();
+  const nomName = document.getElementById('nom-name').value.trim();
+  const nomDept = document.getElementById('nom-dept').value.trim();
+  const category = document.getElementById('nom-category').value;
+  const desc = document.getElementById('nom-desc').value.trim();
+  
+  if (!leaderName || !leaderDept) return showAlert('Please fill your details.', 'error');
+  if (!nomName || !nomDept || !category || !desc) return showAlert('Please fill all nominee fields.', 'error');
+  
+  const nomination = {
+    id: Date.now(),
+    leaderName,
+    leaderDept,
+    nomineeName: nomName,
+    nomineeDept: nomDept,
+    category,
+    description: desc,
+    image: tempPic || '',
+    timestamp: new Date().toISOString()
+  };
+  
+  db.ref('nominations/' + nomination.id).set(nomination)
+    .then(() => {
+      showAlert('Nomination submitted successfully!', 'success');
+      ['nom-name', 'nom-dept', 'nom-desc'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('nom-category').value = '';
+      pv.style.display = 'none';
+      tempPic = '';
+    })
+    .catch(err => showAlert('Error: ' + err.message, 'error'));
+}
+
+// ============ VOTING ============
+function loadNomineesForVoting() {
+  db.ref('nominations').on('value', snapshot => {
+    const data = snapshot.val();
+    nominations = data ? Object.values(data) : [];
+    if (document.getElementById('voting-interface').style.display !== 'none') {
+      renderVotingInterface();
+    }
+  });
+}
+
+function startVoting() {
+  const name = document.getElementById('voter-name').value.trim();
+  const dept = document.getElementById('voter-dept').value.trim();
+  
+  if (!name || !dept) return showAlert('Please fill both fields.', 'error');
+  
+  currentVoter = {name, dept};
+  document.getElementById('voter-display').innerText = name + ' (' + dept + ')';
+  document.getElementById('voter-info-card').style.display = 'none';
+  document.getElementById('voting-interface').style.display = 'block';
+  
+  voterRatings = {};
+  categories.forEach(c => voterRatings[c.id] = {});
+  
+  renderVotingInterface();
+}
+
+function renderVotingInterface() {
+  document.getElementById('cat-tabs').innerHTML = categories.map((c, i) => {
+    const count = nominations.filter(n => n.category === c.name).length;
+    return `<button class="cat-tab ${i === 0 ? 'active' : ''}" onclick="showCategory(${c.id}, this)">${c.name} (${count})</button>`;
+  }).join('');
+  
+  document.getElementById('nominee-list').innerHTML = categories.map((c, i) => {
+    const noms = nominations.filter(n => n.category === c.name);
+    if (noms.length === 0) return `<div class="cat-panel" data-cat="${c.id}" style="display:${i === 0 ? 'block' : 'none'}"><p style="text-align:center;padding:30px;color:#888;">No nominations in this category yet.</p></div>`;
+    
+    return `<div class="cat-panel" data-cat="${c.id}" style="display:${i === 0 ? 'block' : 'none'}">
+      <div class="nominee-grid">
+        ${noms.map(n => `
+          <div class="nominee-card">
+            ${n.image ? `<img src="${n.image}">` : '<div style="height:240px;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:3rem;">👤</div>'}
+            <div class="nominee-info">
+              <h3>${n.nomineeName}</h3>
+              <div class="nominee-meta">
+                <div><strong>Department:</strong> ${n.nomineeDept}</div>
+                <div><strong>Nominated by:</strong> ${n.leaderName}</div>
+              </div>
+              <p style="font-size:.95rem;color:#555;margin-bottom:15px;">${n.description}</p>
+              <div class="rating-box">
+                <label>Your Rating (1-10):</label>
+                <input type="number" min="1" max="10" class="rate-input" data-cat="${c.id}" data-nom="${n.id}" placeholder="—">
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  
+  document.querySelectorAll('.rate-input').forEach(inp => {
+    inp.oninput = function() {
+      const cid = parseInt(this.dataset.cat);
+      const nid = parseInt(this.dataset.nom);
+      const val = parseInt(this.value);
+      
+      if (this.value === '' || (!isNaN(val) && val >= 1 && val <= 10)) {
+        this.style.borderColor = 'var(--border)';
+        if (this.value === '') delete voterRatings[cid][nid];
+        else voterRatings[cid][nid] = val;
+        updateProgress();
+      } else {
+        this.style.borderColor = '#c0392b';
+      }
+    };
+  });
+  
+  updateProgress();
+}
+
+function showCategory(id, btn) {
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.cat-panel').forEach(p => p.style.display = p.dataset.cat == id ? 'block' : 'none');
+}
+
+function updateProgress() {
+  const total = nominations.length;
+  let done = 0;
+  Object.values(voterRatings).forEach(c => done += Object.keys(c).length);
+  document.getElementById('progress-text').innerText = done + ' of ' + total + ' rated';
+  document.getElementById('progress-fill').style.width = (total ? done / total * 100 : 0) + '%';
+}
+
+function submitVotes() {
+  let missing = 0;
+  categories.forEach(c => {
+    const noms = nominations.filter(n => n.category === c.name);
+    noms.forEach(n => {
+      if (!voterRatings[c.id][n.id]) missing++;
+    });
+  });
+  
+  if (missing > 0) return showAlert('Please rate all nominees. ' + missing + ' missing.', 'error');
+  
+  const voteData = {
+    voterName: currentVoter.name,
+    voterDept: currentVoter.dept,
+    timestamp: new Date().toISOString(),
+    ratings: voterRatings
+  };
+  
+  db.ref('votes/' + Date.now()).set(voteData)
+    .then(() => {
+      showAlert('Votes submitted successfully!', 'success');
+      document.getElementById('voting-interface').style.display = 'none';
+      document.getElementById('voter-info-card').style.display = 'block';
+      document.getElementById('voter-name').value = '';
+      document.getElementById('voter-dept').value = '';
+    })
+    .catch(err => showAlert('Error: ' + err.message, 'error'));
+}
+
+// ============ ADMIN DASHBOARD ============
+function loadAdminDashboard() {
+  db.ref('nominations').on('value', snapshot => {
+    const data = snapshot.val();
+    nominations = data ? Object.values(data) : [];
+    document.getElementById('stat-nominations').innerText = nominations.length;
+    renderAdminNominations();
+  });
+  
+  db.ref('votes').on('value', snapshot => {
+    const data = snapshot.val();
+    votes = data ? data : {};
+    const voteCount = Object.keys(votes).length;
+    const uniqueVoters = new Set(Object.values(votes).map(v => v.voterName)).size;
+    document.getElementById('stat-votes').innerText = voteCount;
+    document.getElementById('stat-voters').innerText = uniqueVoters;
+    renderAdminResults();
+  });
+}
+
+function renderAdminNominations() {
+  const container = document.getElementById('admin-nominations');
+  if (nominations.length === 0) {
+    container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No nominations yet.</p>';
+    return;
+  }
+  
+  container.innerHTML = nominations.map(n => `
+    <div class="nominee-item">
+      ${n.image ? `<img src="${n.image}">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;">👤</div>'}
+      <div class="info">
+        <strong>${n.nomineeName}</strong>
+        <small>${n.nomineeDept} • ${n.category}</small>
+        <small>Nominated by: ${n.leaderName} (${n.leaderDept})</small>
+        <small style="font-style:italic;">"${n.description.substring(0, 80)}${n.description.length > 80 ? '...' : ''}"</small>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteNomination(${n.id})">×</button>
+    </div>
+  `).join('');
+}
+
+function deleteNomination(id) {
+  if (!confirm('Delete this nomination?')) return;
+  db.ref('nominations/' + id).remove();
+  showAlert('Nomination deleted.', 'success');
+}
+
+function renderAdminResults() {
+  document.getElementById('admin-cat-tabs').innerHTML = categories.map((c, i) => 
+    `<button class="cat-tab ${i === 0 ? 'active' : ''}" onclick="showAdminCategory(${c.id}, this)">${c.name}</button>`
+  ).join('');
+  
+  showAdminCategory(categories[0].id, document.querySelector('#admin-cat-tabs .cat-tab'));
+}
+
+function showAdminCategory(catId, btn) {
+  document.querySelectorAll('#admin-cat-tabs .cat-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  
+  const category = categories.find(c => c.id === catId);
+  const noms = nominations.filter(n => n.category === category.name);
+  
+  let results = noms.map(n => {
+    let total = 0, count = 0;
+    Object.values(votes).forEach(v => {
+      const rating = v.ratings[catId]?.[n.id];
+      if (rating) { total += rating; count++; }
+    });
+    return { ...n, total, avg: count ? (total / count).toFixed(2) : 0, count };
+  }).sort((a, b) => b.total - a.total);
+  
+  const top = results[0]?.total || 0;
+  
+  document.getElementById('admin-results').innerHTML = results.length === 0 
+    ? '<p style="color:#999;text-align:center;padding:20px;">No nominations in this category.</p>'
+    : `<table>
+        <thead><tr><th>Rank</th><th>Name</th><th>Department</th><th>Total Score</th><th>Average</th><th>Votes</th></tr></thead>
+        <tbody>
+          ${results.map((r, i) => `
+            <tr class="${r.total === top && r.total > 0 ? 'winner' : ''}">
+              <td>${i + 1} ${r.total === top && r.total > 0 ? '🏆' : ''}</td>
+              <td>${r.nomineeName}</td>
+              <td>${r.nomineeDept}</td>
+              <td>${r.total}</td>
+              <td>${r.avg}</td>
+              <td>${r.count}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+}
+
+function resetAllData() {
+  if (!confirm('WARNING: This will delete ALL nominations and votes. Continue?')) return;
+  if (!confirm('Are you absolutely sure?')) return;
+  
+  db.ref('nominations').remove();
+  db.ref('votes').remove();
+  showAlert('All data reset.', 'success');
+}
+
+// ============ INITIAL LOAD ============
+loadNomineesForVoting();
+</script>
+</body>
+</html>
