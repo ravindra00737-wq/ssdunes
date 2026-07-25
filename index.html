@@ -1,258 +1,152 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Employee of the Month - Voting System</title>
+<title>Employee Voting</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
-:root{--brand:#6d3063;--brand-light:#8b4f82;--bg:#f5f2f6;--card:#fff;--text:#333;--border:#e0d8e0;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Book Antiqua',serif;background:var(--bg);color:var(--text);min-height:100vh;}
-.navbar{background:linear-gradient(135deg,var(--brand),var(--brand-light));color:#fff;padding:15px 30px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
-.navbar h1{font-size:1.5rem;}
-.nav-tabs{display:flex;gap:10px;flex-wrap:wrap;}
-.nav-tab{background:rgba(255,255,255,.2);color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:bold;transition:.25s;}
-.nav-tab:hover{background:rgba(255,255,255,.3);}
-.nav-tab.active{background:#fff;color:var(--brand);}
-.container{max-width:1200px;margin:30px auto;padding:0 20px;}
-.tab-content{display:none;animation:fade .3s;}
-.tab-content.active{display:block;}
-@keyframes fade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
-.card{background:var(--card);border-radius:12px;padding:25px;box-shadow:0 4px 14px rgba(109,48,99,.08);border:1px solid var(--border);margin-bottom:20px;}
-.card h2{color:var(--brand);margin-bottom:15px;padding-bottom:8px;border-bottom:2px solid var(--brand-light);}
-label{display:block;margin:12px 0 6px;font-weight:bold;color:#555;}
-input[type=text],input[type=password],select,textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;font-size:1rem;background:#fff;}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(109,48,99,.1);}
-textarea{resize:vertical;min-height:80px;}
-.btn{background:var(--brand);color:#fff;border:none;padding:12px 26px;border-radius:7px;cursor:pointer;font-family:inherit;font-weight:bold;font-size:1rem;transition:.25s;display:inline-flex;align-items:center;gap:7px;}
-.btn:hover{background:var(--brand-light);transform:translateY(-2px);box-shadow:0 6px 14px rgba(109,48,99,.3);}
-.btn-full{width:100%;justify-content:center;margin-top:18px;padding:14px;}
-.btn-success{background:#2e7d32;}
-.btn-success:hover{background:#388e3c;}
-.btn-danger{background:#a02c2c;}
-.btn-danger:hover{background:#c0392b;}
-.alert{padding:13px 18px;border-radius:8px;margin-bottom:15px;display:none;}
-.alert-success{background:#d4edda;color:#155724;}
-.alert-error{background:#f8d7da;color:#721c24;}
-.nominee-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;}
-.nominee-card{background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(109,48,99,.1);}
-.nominee-card img{width:100%;height:240px;object-fit:cover;background:#eee;}
-.nominee-info{padding:20px;}
-.nominee-info h3{color:var(--brand);margin-bottom:8px;}
-.cat-tabs{display:flex;gap:8px;margin-bottom:25px;flex-wrap:wrap;border-bottom:2px solid var(--border);}
-.cat-tab{padding:12px 22px;background:#f0e8f0;color:var(--brand);border:none;border-radius:8px 8px 0 0;cursor:pointer;font-family:inherit;font-weight:bold;}
-.cat-tab.active{background:var(--brand);color:#fff;}
-.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px;}
-.stat{background:linear-gradient(135deg,var(--brand),var(--brand-light));color:#fff;padding:20px;border-radius:10px;text-align:center;}
-.stat .num{font-size:2rem;font-weight:bold;}
-.progress-bar{background:#e0d8e0;height:8px;border-radius:4px;overflow:hidden;margin:15px 0;}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-light));}
-.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;}
-.modal.active{display:flex;}
-.modal-content{background:#fff;padding:30px;border-radius:12px;max-width:400px;width:90%;}
+body { font-family: Arial; background: #f5f2f6; margin: 0; padding: 20px; }
+.navbar { background: #6d3063; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+.navbar h1 { margin: 0; }
+.tab { background: rgba(255,255,255,0.2); padding: 10px 20px; border: none; color: white; cursor: pointer; margin-right: 10px; border-radius: 5px; }
+.tab.active { background: white; color: #6d3063; }
+.card { background: white; padding: 25px; border-radius: 10px; margin-bottom: 20px; }
+input, select, textarea { width: 100%; padding: 10px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 5px; }
+button { background: #6d3063; color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; width: 100%; }
+.hidden { display: none; }
 </style>
 </head>
 <body>
-<nav class="navbar">
+<div class="navbar">
   <h1>🏆 Employee of the Month</h1>
-  <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchTab('nominate', this)">📝 Nominate</button>
-    <button class="nav-tab" onclick="switchTab('vote', this)">🗳️ Vote</button>
-    <button class="nav-tab" onclick="showAdminLogin()">⚙️ Admin</button>
+  <button class="tab active" onclick="showTab('nominate')">📝 Nominate</button>
+  <button class="tab" onclick="showTab('vote')">️ Vote</button>
+  <button class="tab" onclick="showTab('admin')">️ Admin</button>
+</div>
+
+<div id="nominate" class="tab-content">
+  <div class="card">
+    <h2>Submit Nomination</h2>
+    <input type="text" id="leaderName" placeholder="Your Name">
+    <input type="text" id="leaderDept" placeholder="Your Department">
+    <input type="text" id="nomName" placeholder="Nominee Name">
+    <input type="text" id="nomDept" placeholder="Nominee Department">
+    <select id="nomCategory">
+      <option value="">Select Category</option>
+      <option value="Host of the Month (FOH)">Host of the Month (FOH)</option>
+      <option value="Host of the Month (HOH)">Host of the Month (HOH)</option>
+      <option value="Leader of the Quarter">Leader of the Quarter</option>
+      <option value="Sustainability Hero">Sustainability Hero</option>
+    </select>
+    <textarea id="nomDesc" placeholder="Why they deserve this award?" rows="4"></textarea>
+    <button onclick="submitNomination()">Submit</button>
   </div>
-</nav>
-<div class="container">
-  <div id="alert-success" class="alert alert-success"></div>
-  <div id="alert-error" class="alert alert-error"></div>
-  <div id="tab-nominate" class="tab-content active">
-    <div class="card">
-      <h2>📝 Submit a Nomination</h2>
-      <label>Your Name (Leader)</label>
-      <input type="text" id="nom-leader-name" placeholder="Your name">
-      <label>Your Department</label>
-      <input type="text" id="nom-leader-dept" placeholder="Your department">
-      <div style="margin-top:20px;padding-top:20px;border-top:2px solid var(--border);">
-        <h3>Nominee Details</h3>
-        <label>Nominee Name</label>
-        <input type="text" id="nom-name" placeholder="Nominee name">
-        <label>Nominee Department</label>
-        <input type="text" id="nom-dept" placeholder="Nominee department">
-        <label>Category</label>
-        <select id="nom-category">
-          <option value="">-- Select Category --</option>
-          <option value="Host of the Month (FOH)">Host of the Month (FOH)</option>
-          <option value="Host of the Month (HOH)">Host of the Month (HOH)</option>
-          <option value="Leader of the Quarter">Leader of the Quarter</option>
-          <option value="Sustainability Hero of the Month">Sustainability Hero of the Month</option>
-        </select>
-        <label>Short Description</label>
-        <textarea id="nom-desc" placeholder="Why do they deserve this?"></textarea>
-        <button class="btn btn-full" onclick="submitNomination()">✅ Submit Nomination</button>
-      </div>
-    </div>
+</div>
+
+<div id="vote" class="tab-content hidden">
+  <div class="card">
+    <h2>Cast Your Vote</h2>
+    <input type="text" id="voterName" placeholder="Your Name">
+    <input type="text" id="voterDept" placeholder="Your Department">
+    <button onclick="startVoting()">Start Voting</button>
   </div>
-  <div id="tab-vote" class="tab-content">
-    <div class="card" id="voter-info-card">
-      <h2>🗳️ Cast Your Vote</h2>
-      <label>Your Name</label>
-      <input type="text" id="voter-name" placeholder="Your name">
-      <label>Your Department</label>
-      <input type="text" id="voter-dept" placeholder="Your department">
-      <button class="btn btn-full" onclick="startVoting()">Start Voting →</button>
-    </div>
-    <div id="voting-interface" style="display:none;">
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;margin-bottom:15px;">
-          <strong>Voting as:</strong> <span id="voter-display"></span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-        <div class="cat-tabs" id="cat-tabs"></div>
-        <div id="nominee-list"></div>
-        <button class="btn btn-success btn-full" onclick="submitVotes()">✅ Submit All Votes</button>
-      </div>
-    </div>
+  <div id="votingForm" class="card hidden">
+    <h3>Rate Nominees (1-10)</h3>
+    <div id="nomineesList"></div>
+    <button onclick="submitVotes()">Submit Votes</button>
   </div>
-  <div id="tab-admin" class="tab-content">
-    <div class="card">
-      <h2>⚙️ Admin Dashboard</h2>
-      <div class="stat-grid">
-        <div class="stat"><div class="num" id="stat-nominations">0</div><div class="lbl">Nominations</div></div>
-        <div class="stat"><div class="num" id="stat-votes">0</div><div class="lbl">Votes Cast</div></div>
-      </div>
-      <div id="admin-nominations"></div>
-      <div id="admin-results"></div>
+</div>
+
+<div id="admin" class="tab-content hidden">
+  <div class="card">
+    <h2>Admin Dashboard</h2>
+    <input type="password" id="adminPass" placeholder="Password">
+    <button onclick="checkAdmin()">Login</button>
+    <div id="adminPanel" class="hidden">
+      <h3>Nominations: <span id="nomCount">0</span></h3>
+      <div id="nominationsList"></div>
     </div>
   </div>
 </div>
-<div id="admin-modal" class="modal">
-  <div class="modal-content">
-    <h2 style="color:var(--brand);margin-bottom:15px;">⚙️ Admin Login</h2>
-    <label>Password</label>
-    <input type="password" id="admin-password" placeholder="Enter password">
-    <button class="btn btn-full" onclick="verifyAdmin()">Login</button>
-    <button class="btn btn-outline btn-full" onclick="closeAdminModal()" style="margin-top:10px;">Cancel</button>
-  </div>
-</div>
+
 <script>
-// ⚠️ REPLACE WITH YOUR FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
+  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   authDomain: "sshostrecognition.firebaseapp.com",
   databaseURL: "https://sshostrecognition-default-rtdb.firebaseio.com",
   projectId: "sshostrecognition",
   storageBucket: "sshostrecognition.appspot.com",
   messagingSenderId: "717686789724",
-  appId: "YOUR_APP_ID_HERE"
+  appId: "1:717686789724:web:XXXXXXXXXXXXXXXX"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-let nominations = [], votes = {}, tempPic = '', currentVoter = {}, voterRatings = {};
-const categories = [
-  {id: 1, name: "Host of the Month (FOH)"},
-  {id: 2, name: "Host of the Month (HOH)"},
-  {id: 3, name: "Leader of the Quarter"},
-  {id: 4, name: "Sustainability Hero of the Month"}
-];
 
-function switchTab(tab, btn) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  if (btn) btn.classList.add('active');
-  if (tab === 'vote') loadNominees();
-  if (tab === 'admin') loadAdmin();
-}
-
-function showAdminLogin() { document.getElementById('admin-modal').classList.add('active'); }
-function closeAdminModal() { document.getElementById('admin-modal').classList.remove('active'); }
-function verifyAdmin() {
-  if (document.getElementById('admin-password').value === 'Admin@2026') {
-    closeAdminModal();
-    switchTab('admin', document.querySelectorAll('.nav-tab')[2]);
-    loadAdmin();
-  } else { alert('Wrong password!'); }
-}
-
-function showAlert(msg, type) {
-  const el = document.getElementById('alert-' + type);
-  el.innerText = msg; el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 3500);
+function showTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tab).classList.remove('hidden');
+  event.target.classList.add('active');
 }
 
 function submitNomination() {
   const data = {
-    leaderName: document.getElementById('nom-leader-name').value,
-    leaderDept: document.getElementById('nom-leader-dept').value,
-    nomineeName: document.getElementById('nom-name').value,
-    nomineeDept: document.getElementById('nom-dept').value,
-    category: document.getElementById('nom-category').value,
-    description: document.getElementById('nom-desc').value,
-    timestamp: new Date().toISOString()
+    leader: document.getElementById('leaderName').value,
+    leaderDept: document.getElementById('leaderDept').value,
+    nominee: document.getElementById('nomName').value,
+    nomineeDept: document.getElementById('nomDept').value,
+    category: document.getElementById('nomCategory').value,
+    desc: document.getElementById('nomDesc').value
   };
-  if (!data.leaderName || !data.nomineeName || !data.category) return showAlert('Fill all fields', 'error');
-  db.ref('nominations/' + Date.now()).set(data).then(() => {
-    showAlert('Nomination submitted!', 'success');
-    ['nom-name', 'nom-dept', 'nom-desc'].forEach(id => document.getElementById(id).value = '');
-  });
+  if (!data.leader || !data.nominee) { alert('Fill required fields'); return; }
+  db.ref('nominations/' + Date.now()).set(data);
+  alert('Submitted!');
+}
+
+function startVoting() {
+  const name = document.getElementById('voterName').value;
+  if (!name) { alert('Enter your name'); return; }
+  document.getElementById('votingForm').classList.remove('hidden');
+  loadNominees();
 }
 
 function loadNominees() {
   db.ref('nominations').on('value', snap => {
-    nominations = snap.val() ? Object.values(snap.val()) : [];
-    renderVoting();
+    const noms = snap.val() || {};
+    document.getElementById('nomineesList').innerHTML = Object.values(noms).map(n => `
+      <div style="margin:10px 0; padding:10px; background:#f5f2f6; border-radius:5px;">
+        <strong>${n.nominee}</strong> (${n.category})<br>
+        ${n.desc}<br>
+        <input type="number" min="1" max="10" placeholder="Rate 1-10" data-nom="${n.nominee}">
+      </div>
+    `).join('');
   });
 }
 
-function startVoting() {
-  currentVoter = {name: document.getElementById('voter-name').value, dept: document.getElementById('voter-dept').value};
-  if (!currentVoter.name) return showAlert('Enter your name', 'error');
-  document.getElementById('voter-display').innerText = currentVoter.name;
-  document.getElementById('voter-info-card').style.display = 'none';
-  document.getElementById('voting-interface').style.display = 'block';
-  renderVoting();
+function submitVotes() {
+  alert('Votes submitted!');
 }
 
-function renderVoting() {
-  document.getElementById('cat-tabs').innerHTML = categories.map((c, i) => 
-    `<button class="cat-tab ${i===0?'active':''}" onclick="showCat(${c.id},this)">${c.name}</button>`
-  ).join('');
-  document.getElementById('nominee-list').innerHTML = categories.map(c => {
-    const noms = nominations.filter(n => n.category === c.name);
-    return `<div class="cat-panel" data-cat="${c.id}" style="display:${c.id===1?'block':'none'}">
-      <div class="nominee-grid">${noms.map(n => `
-        <div class="nominee-card">
-          <div class="nominee-info">
-            <h3>${n.nomineeName}</h3>
-            <p>${n.description}</p>
-            <div style="margin-top:10px;">
-              <label>Rating (1-10):</label>
-              <input type="number" min="1" max="10" data-cat="${c.id}" data-nom="${n.id}" style="width:70px;">
-            </div>
-          </div>
-        </div>
-      `).join('')}</div>
-    </div>`;
-  }).join('');
+function checkAdmin() {
+  if (document.getElementById('adminPass').value === 'Admin@2026') {
+    document.getElementById('adminPanel').classList.remove('hidden');
+    loadAdminData();
+  } else {
+    alert('Wrong password');
+  }
 }
 
-function showCat(id, btn) {
-  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.cat-panel').forEach(p => p.style.display = p.dataset.cat == id ? 'block' : 'none');
-}
-
-function submitVotes() { showAlert('Votes submitted!', 'success'); }
-
-function loadAdmin() {
+function loadAdminData() {
   db.ref('nominations').on('value', snap => {
-    nominations = snap.val() ? Object.values(snap.val()) : [];
-    document.getElementById('stat-nominations').innerText = nominations.length;
-  });
-  db.ref('votes').on('value', snap => {
-    votes = snap.val() || {};
-    document.getElementById('stat-votes').innerText = Object.keys(votes).length;
+    const noms = Object.values(snap.val() || {});
+    document.getElementById('nomCount').innerText = noms.length;
+    document.getElementById('nominationsList').innerHTML = noms.map(n => `
+      <div style="padding:10px; background:#f5f2f6; margin:5px 0; border-radius:5px;">
+        <strong>${n.nominee}</strong> - ${n.category}<br>
+        By: ${n.leader} (${n.leaderDept})
+      </div>
+    `).join('');
   });
 }
 </script>
