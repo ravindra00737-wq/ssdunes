@@ -99,6 +99,11 @@ textarea{resize:vertical;min-height:100px;}
 
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;}
 
+.period-selector{background:linear-gradient(135deg,var(--brand),var(--brand-light));color:#fff;padding:15px 20px;border-radius:10px;margin-bottom:20px;display:flex;gap:15px;align-items:center;flex-wrap:wrap;}
+.period-selector select{padding:8px 12px;border-radius:6px;border:none;font-size:1rem;}
+.period-selector button{padding:8px 16px;background:#fff;color:var(--brand);border:none;border-radius:6px;cursor:pointer;font-weight:bold;}
+.period-selector button:hover{background:#f0e8f0;}
+
 @media(max-width:768px){
   .header-content{flex-direction:column;text-align:center;}
   .hotel-logo{width:80px;height:80px;font-size:2rem;}
@@ -175,7 +180,6 @@ textarea{resize:vertical;min-height:100px;}
           <input type="text" id="nom-name" placeholder="Enter nominee's full name">
         </div>
         
-        <!-- FIXED: Changed ID from nom-leader-dept to nom-dept -->
         <div class="form-group">
           <label>Nominee Department *</label>
           <select id="nom-dept" required>
@@ -242,7 +246,6 @@ textarea{resize:vertical;min-height:100px;}
         <input type="text" id="voter-name" placeholder="Enter your full name">
       </div>
       
-      <!-- FIXED: Changed ID from nom-leader-dept to voter-dept -->
       <div class="form-group">
         <label>Your Department *</label>
         <select id="voter-dept" required>
@@ -297,7 +300,15 @@ textarea{resize:vertical;min-height:100px;}
   <div id="tab-admin" class="tab-content">
     <div class="card">
       <h2>⚙️ Admin Dashboard</h2>
-      <p style="margin-bottom:15px;color:#666;">Current Period: <strong id="display-current-period" style="color:var(--brand);"></strong></p>
+      
+      <!-- Period Selector -->
+      <div class="period-selector">
+        <label style="color:#fff;font-weight:bold;">Select Award Period:</label>
+        <select id="admin-period-month"></select>
+        <select id="admin-period-year"></select>
+        <button onclick="switchPeriod()">Switch Period</button>
+        <span id="display-current-period" style="margin-left:auto;color:#fff;font-weight:bold;"></span>
+      </div>
       
       <div class="stats-grid">
         <div class="stat-card"><div class="number" id="stat-nominations">0</div><div class="label">Total Nominations</div></div>
@@ -343,7 +354,7 @@ textarea{resize:vertical;min-height:100px;}
             <div class="form-group">
               <label>Hotel Logo</label>
               <div class="file-upload" id="logo-drop">
-                <p style="font-size:2rem;">🏨</p>
+                <p style="font-size:2rem;"></p>
                 <p>Click to upload logo</p>
                 <input type="file" id="logo-file" accept="image/*">
               </div>
@@ -461,47 +472,87 @@ let currentPeriod = '';
 
 // ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
-  const yearSelect = document.getElementById('reset-year');
+  populatePeriodSelectors();
+  loadBranding();
+  loadPageSettings();
+  loadCurrentPeriod();
+});
+
+function populatePeriodSelectors() {
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const currentYear = new Date().getFullYear();
+  
+  // Admin period selectors
+  const adminMonthSelect = document.getElementById('admin-period-month');
+  const adminYearSelect = document.getElementById('admin-period-year');
+  months.forEach((m, i) => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.text = m;
+    adminMonthSelect.appendChild(opt);
+  });
+  for(let i = currentYear - 1; i <= currentYear + 2; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.text = i;
+    adminYearSelect.appendChild(opt);
+  }
+  
+  // Reset modal selectors
+  const resetMonthSelect = document.getElementById('reset-month');
+  const resetYearSelect = document.getElementById('reset-year');
+  resetMonthSelect.selectedIndex = new Date().getMonth();
   for(let i = currentYear - 1; i <= currentYear + 2; i++) {
     const opt = document.createElement('option');
     opt.value = i;
     opt.text = i;
     if(i === currentYear) opt.selected = true;
-    yearSelect.appendChild(opt);
+    resetYearSelect.appendChild(opt);
   }
-  
-  loadBranding();
-  loadPageSettings();
-  loadPeriodAndCategories();
-  loadNominations();
-});
+}
 
-// ============ PERIOD & CATEGORY MANAGEMENT ============
-function loadPeriodAndCategories() {
-  db.ref('settings/period').once('value', snap => {
+function loadCurrentPeriod() {
+  db.ref('settings/currentPeriod').once('value', snap => {
     const p = snap.val();
     if (p && p.month && p.year) {
       currentPeriod = `${p.month} ${p.year}`;
     } else {
       const d = new Date();
       currentPeriod = `${d.toLocaleString('default', {month: 'long'})} ${d.getFullYear()}`;
-      db.ref('settings/period').set({month: d.toLocaleString('default', {month: 'long'}), year: d.getFullYear()});
     }
     
-    document.getElementById('display-current-period').innerText = currentPeriod;
-    document.getElementById('reset-month').value = new Date().toLocaleString('default', {month: 'long'});
-    document.getElementById('reset-year').value = new Date().getFullYear();
-    
+    updatePeriodDisplay();
     loadCategoriesForPeriod();
+    loadNominations();
   });
 }
 
+function switchPeriod() {
+  const month = document.getElementById('admin-period-month').value;
+  const year = document.getElementById('admin-period-year').value;
+  currentPeriod = `${month} ${year}`;
+  
+  db.ref('settings/currentPeriod').set({month, year}).then(() => {
+    updatePeriodDisplay();
+    loadCategoriesForPeriod();
+    loadAdminDashboard();
+    showAlert('Switched to ' + currentPeriod, 'success');
+  });
+}
+
+function updatePeriodDisplay() {
+  document.getElementById('display-current-period').innerText = currentPeriod;
+  const [month, year] = currentPeriod.split(' ');
+  document.getElementById('admin-period-month').value = month;
+  document.getElementById('admin-period-year').value = year;
+}
+
 function loadCategoriesForPeriod() {
-  db.ref('categories/' + currentPeriod).once('value', snap => {
-    const cats = snap.val();
-    if (cats) {
-      categories = Object.values(cats);
+  const path = 'categories/' + currentPeriod.replace(' ', '_');
+  db.ref(path).once('value', snap => {
+    const data = snap.val();
+    if (data) {
+      categories = Object.values(data);
     } else {
       categories = [
         {id: 1, name: "Host of the Month (FOH)"},
@@ -509,10 +560,9 @@ function loadCategoriesForPeriod() {
         {id: 3, name: "Leader of the Quarter"},
         {id: 4, name: "Sustainability Hero of the Month"}
       ];
-      db.ref('categories/' + currentPeriod).set(categories);
+      db.ref(path).set(categories);
     }
     
-    // Populate nomination category dropdown
     const catSelect = document.getElementById('nom-category');
     catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
       categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
@@ -531,10 +581,13 @@ function addCategory() {
   const newCat = {id: Date.now(), name};
   categories.push(newCat);
   
-  db.ref('categories/' + currentPeriod).set(categories).then(() => {
+  const path = 'categories/' + currentPeriod.replace(' ', '_');
+  const catObj = {};
+  categories.forEach(c => catObj[c.id] = c);
+  
+  db.ref(path).set(catObj).then(() => {
     document.getElementById('new-category').value = '';
     renderCategoryList();
-    // Update dropdowns
     const catSelect = document.getElementById('nom-category');
     catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
       categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
@@ -545,7 +598,12 @@ function addCategory() {
 function deleteCategory(id) {
   if(!confirm('Delete this category?')) return;
   categories = categories.filter(c => c.id !== id);
-  db.ref('categories/' + currentPeriod).set(categories).then(() => {
+  
+  const path = 'categories/' + currentPeriod.replace(' ', '_');
+  const catObj = {};
+  categories.forEach(c => catObj[c.id] = c);
+  
+  db.ref(path).set(catObj).then(() => {
     renderCategoryList();
     const catSelect = document.getElementById('nom-category');
     catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
@@ -657,7 +715,7 @@ function switchTab(tab, btn) {
   
   if(tab === 'nominate') {
     loadMyNominations();
-    loadCategoriesForPeriod(); // Ensure dropdown is populated
+    loadCategoriesForPeriod();
   }
   if(tab === 'vote') loadNomineesForVoting();
   if(tab === 'admin') loadAdminDashboard();
@@ -685,13 +743,15 @@ function verifyAdmin() {
 }
 
 function loadAdminDashboard() {
-  db.ref('nominations').on('value', snap => {
+  const path = 'nominations/' + currentPeriod.replace(' ', '_');
+  db.ref(path).on('value', snap => {
     nominations = snap.val() ? Object.values(snap.val()) : [];
     document.getElementById('stat-nominations').innerText = nominations.length;
     renderAdminNominations();
   });
   
-  db.ref('votes').on('value', snap => {
+  const votesPath = 'votes/' + currentPeriod.replace(' ', '_');
+  db.ref(votesPath).on('value', snap => {
     votes = snap.val() || {};
     const voteCount = Object.keys(votes).length;
     const uniqueVoters = new Set(Object.values(votes).map(v => v.voterName)).size;
@@ -712,7 +772,7 @@ function renderAdminNominations() {
   
   container.innerHTML = nominations.map(n => `
     <div style="display:flex;gap:12px;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);">
-      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;">👤</div>'}
+      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;"></div>'}
       <div style="flex:1;">
         <strong style="color:var(--brand);">${n.nomineeName}</strong>
         <small style="color:#666;display:block;">${n.nomineeDept} • ${n.category}</small>
@@ -775,7 +835,7 @@ function submitNomination() {
   const leaderName = document.getElementById('nom-leader-name').value.trim();
   const leaderDept = document.getElementById('nom-leader-dept').value.trim();
   const nomName = document.getElementById('nom-name').value.trim();
-  const nomDept = document.getElementById('nom-dept').value.trim(); // FIXED ID
+  const nomDept = document.getElementById('nom-dept').value.trim();
   const category = document.getElementById('nom-category').value;
   const desc = document.getElementById('nom-desc').value.trim();
   
@@ -789,7 +849,8 @@ function submitNomination() {
     timestamp: new Date().toISOString()
   };
   
-  db.ref('nominations/' + nomination.id).set(nomination)
+  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + nomination.id;
+  db.ref(path).set(nomination)
     .then(() => {
       showAlert('Nomination submitted successfully!', 'success');
       ['nom-leader-name', 'nom-leader-dept', 'nom-name', 'nom-dept', 'nom-desc'].forEach(id => document.getElementById(id).value = '');
@@ -805,7 +866,8 @@ function submitNomination() {
 function loadMyNominations() {
   if(!currentLeader.name) return;
   
-  db.ref('nominations').orderByChild('leaderName').equalTo(currentLeader.name).once('value', snap => {
+  const path = 'nominations/' + currentPeriod.replace(' ', '_');
+  db.ref(path).orderByChild('leaderName').equalTo(currentLeader.name).once('value', snap => {
     const myNoms = [];
     snap.forEach(child => myNoms.push({id: child.key, ...child.val()}));
     
@@ -829,7 +891,8 @@ function loadMyNominations() {
 
 function deleteMyNomination(id) {
   if(!confirm('Delete this nomination?')) return;
-  db.ref('nominations/' + id).remove().then(() => {
+  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + id;
+  db.ref(path).remove().then(() => {
     showAlert('Nomination deleted.', 'success');
     loadMyNominations();
   });
@@ -837,12 +900,14 @@ function deleteMyNomination(id) {
 
 function deleteNomination(id) {
   if(!confirm('Delete this nomination?')) return;
-  db.ref('nominations/' + id).remove();
+  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + id;
+  db.ref(path).remove();
 }
 
 // ============ VOTING FUNCTIONS ============
 function loadNomineesForVoting() {
-  db.ref('nominations').on('value', snap => {
+  const path = 'nominations/' + currentPeriod.replace(' ', '_');
+  db.ref(path).on('value', snap => {
     nominations = snap.val() ? Object.values(snap.val()) : [];
     if(document.getElementById('voting-interface').style.display !== 'none') {
       renderVotingInterface();
@@ -852,7 +917,7 @@ function loadNomineesForVoting() {
 
 function startVoting() {
   const name = document.getElementById('voter-name').value.trim();
-  const dept = document.getElementById('voter-dept').value.trim(); // FIXED ID
+  const dept = document.getElementById('voter-dept').value.trim();
   
   if(!name || !dept) return showAlert('Please fill both fields.', 'error');
   
@@ -955,7 +1020,8 @@ function submitVotes() {
     ratings: voterRatings
   };
   
-  db.ref('votes/' + Date.now()).set(voteData)
+  const path = 'votes/' + currentPeriod.replace(' ', '_') + '/' + Date.now();
+  db.ref(path).set(voteData)
     .then(() => {
       showAlert('Votes submitted successfully!', 'success');
       document.getElementById('voting-interface').style.display = 'none';
@@ -1019,25 +1085,34 @@ function confirmReset() {
   const newPeriod = `${month} ${year}`;
   
   if(confirm(`This will archive data for "${currentPeriod}" and reset for "${newPeriod}". Continue?`)) {
-    db.ref('archive/' + currentPeriod.replace(' ', '_')).set({
+    const oldPath = currentPeriod.replace(' ', '_');
+    const newPath = newPeriod.replace(' ', '_');
+    
+    // Archive old data
+    db.ref('archive/' + oldPath).set({
       nominations, votes, categories,
       archivedAt: new Date().toISOString(),
       period: currentPeriod
     });
     
-    db.ref('nominations').remove();
-    db.ref('votes').remove();
+    // Clear current data
+    db.ref('nominations/' + oldPath).remove();
+    db.ref('votes/' + oldPath).remove();
     
+    // Set new period
     currentPeriod = newPeriod;
-    db.ref('settings/period').set({month, year});
+    db.ref('settings/currentPeriod').set({month, year});
     
+    // Reset categories for new period
     categories = [
       {id: 1, name: "Host of the Month (FOH)"},
       {id: 2, name: "Host of the Month (HOH)"},
       {id: 3, name: "Leader of the Quarter"},
       {id: 4, name: "Sustainability Hero of the Month"}
     ];
-    db.ref('categories/' + currentPeriod).set(categories);
+    const catObj = {};
+    categories.forEach(c => catObj[c.id] = c);
+    db.ref('categories/' + newPath).set(catObj);
     
     closeResetModal();
     showAlert('Data archived and reset for ' + newPeriod, 'success');
@@ -1110,7 +1185,8 @@ function showAlert(msg, type) {
 }
 
 function loadNominations() {
-  db.ref('nominations').on('value', snap => {
+  const path = 'nominations/' + currentPeriod.replace(' ', '_');
+  db.ref(path).on('value', snap => {
     nominations = snap.val() ? Object.values(snap.val()) : [];
   });
 }
