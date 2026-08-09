@@ -6,6 +6,7 @@
 <title>Employee of the Month - Voting System</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--brand:#6d3063;--brand-light:#8b4f82;--bg:#f5f2f6;--card:#fff;--text:#333;--border:#e0d8e0;--success:#2e7d32;--danger:#a02c2c;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -153,7 +154,7 @@ textarea{resize:vertical;min-height:100px;}
   <!-- NOMINATION TAB -->
   <div id="tab-nominate" class="tab-content active">
     <div class="card">
-      <h2 id="nominationTitle">📝 Submit a Nomination</h2>
+      <h2 id="nominationTitle"> Submit a Nomination</h2>
       <p id="nominationSubtitle" class="subtitle">Leaders: Recognize outstanding team members by nominating them for awards.</p>
       
       <div class="form-group">
@@ -315,7 +316,7 @@ textarea{resize:vertical;min-height:100px;}
   <!-- ADMIN TAB -->
   <div id="tab-admin" class="tab-content">
     <div class="card">
-      <h2>⚙️ Admin Dashboard</h2>
+      <h2>️ Admin Dashboard</h2>
       
       <div class="period-selector">
         <label style="color:#fff;font-weight:bold;">Select Award Period:</label>
@@ -354,8 +355,8 @@ textarea{resize:vertical;min-height:100px;}
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
         <h3 style="color:var(--brand);margin-bottom:15px;">📥 Data Management</h3>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-outline" onclick="exportData()"> Export All Data</button>
-          <button class="btn btn-outline" onclick="downloadReport()"> Download Report</button>
+          <button class="btn btn-outline" onclick="exportData()"> Export All Data (Excel)</button>
+          <button class="btn btn-outline" onclick="downloadReport()"> Download Report (Excel)</button>
           <button class="btn btn-danger" onclick="showResetModal()"> Reset for New Month</button>
           <button class="btn btn-danger" onclick="resetAllData()">⚠️ Delete All Data</button>
         </div>
@@ -385,7 +386,7 @@ textarea{resize:vertical;min-height:100px;}
             <div class="form-group">
               <label>Background Image</label>
               <div class="file-upload" id="bg-drop">
-                <p style="font-size:2rem;">🌄</p>
+                <p style="font-size:2rem;"></p>
                 <p>Click to upload background</p>
                 <input type="file" id="bg-file" accept="image/*">
               </div>
@@ -555,7 +556,7 @@ textarea{resize:vertical;min-height:100px;}
       <label>Profile Picture</label>
       <div id="edit-pic-current" style="margin-bottom:10px;"></div>
       <div class="file-upload" id="edit-pic-drop">
-        <p style="font-size:2.5rem;">📷</p>
+        <p style="font-size:2.5rem;"></p>
         <p>Click to upload/change photo</p>
         <input type="file" id="edit-pic-file" accept="image/*">
       </div>
@@ -1049,7 +1050,7 @@ function renderAdminVotes() {
         </div>
         <div style="display:flex;gap:5px;">
           <button class="btn btn-info btn-sm" onclick="viewVote('${voteId}')">👁️ View/Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteVote('${voteId}')">🗑️ Delete</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteVote('${voteId}')">️ Delete</button>
         </div>
       </div>
     </div>
@@ -1466,42 +1467,120 @@ function submitVotes() {
     .catch(err => showAlert('Error: ' + err.message, 'error'));
 }
 
-// ============ DATA MANAGEMENT ============
+// ============ DATA MANAGEMENT - EXCEL EXPORT ============
 function exportData() {
-  const data = {
-    period: currentPeriod,
-    nominations, votes, categories,
-    exportedAt: new Date().toISOString()
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `voting-data-${currentPeriod.replace(' ', '_')}.json`;
-  a.click();
-  showAlert('Data exported!', 'success');
+  const wb = XLSX.utils.book_new();
+  
+  // Nominations Sheet
+  const nominationsData = nominations.map(n => ({
+    'Nominee Name': n.nomineeName,
+    'Department': n.nomineeDept,
+    'Category': n.category,
+    'Nominated By': n.leaderName,
+    'Nominator Dept': n.leaderDept,
+    'Description': n.description,
+    'Photo': n.image ? 'Yes' : 'No',
+    'Timestamp': new Date(n.timestamp).toLocaleString()
+  }));
+  const nominationsWS = XLSX.utils.json_to_sheet(nominationsData);
+  XLSX.utils.book_append_sheet(wb, nominationsWS, 'Nominations');
+  
+  // Votes Sheet
+  const votesData = [];
+  Object.entries(votes).forEach(([voteId, vote]) => {
+    Object.entries(vote.ratings).forEach(([catName, ratings]) => {
+      Object.entries(ratings).forEach(([nomId, rating]) => {
+        const nominee = nominations.find(n => n.id === nomId);
+        votesData.push({
+          'Voter Name': vote.voterName,
+          'Voter Department': vote.voterDept,
+          'Category': catName,
+          'Nominee': nominee ? nominee.nomineeName : 'Unknown',
+          'Rating': rating,
+          'Voted At': new Date(vote.timestamp).toLocaleString()
+        });
+      });
+    });
+  });
+  const votesWS = XLSX.utils.json_to_sheet(votesData);
+  XLSX.utils.book_append_sheet(wb, votesWS, 'Votes');
+  
+  // Categories Sheet
+  const categoriesWS = XLSX.utils.json_to_sheet(categories);
+  XLSX.utils.book_append_sheet(wb, categoriesWS, 'Categories');
+  
+  // Download
+  XLSX.writeFile(wb, `VotingData_${currentPeriod.replace(' ', '_')}.xlsx`);
+  showAlert('Data exported to Excel successfully!', 'success');
 }
 
 function downloadReport() {
-  let csv = 'Category,Nominee,Department,Nominated By,Total Score,Average,Votes\n';
+  const wb = XLSX.utils.book_new();
+  
+  // Create a sheet for each category
   categories.forEach(cat => {
-    const noms = nominations.filter(n => n.category === cat.name);
-    noms.forEach(n => {
-      let total = 0, count = 0;
-      Object.values(votes).forEach(v => {
-        const rating = v.ratings[cat.name]?.[n.id];
-        if(rating) { total += parseInt(rating); count++; }
+    const catNominations = nominations.filter(n => n.category === cat.name);
+    
+    const reportData = catNominations.map(n => {
+      let totalScore = 0;
+      let voteCount = 0;
+      
+      Object.values(votes).forEach(vote => {
+        const rating = vote.ratings[cat.name]?.[n.id];
+        if(rating !== undefined) {
+          totalScore += parseInt(rating);
+          voteCount++;
+        }
       });
-      const avg = count ? (total / count).toFixed(2) : 0;
-      csv += `"${cat.name}","${n.nomineeName}","${n.nomineeDept}","${n.leaderName}",${total},${avg},${count}\n`;
+      
+      const average = voteCount > 0 ? (totalScore / voteCount).toFixed(2) : 0;
+      
+      return {
+        'Nominee Name': n.nomineeName,
+        'Department': n.nomineeDept,
+        'Nominated By': n.leaderName,
+        'Description': n.description,
+        'Has Photo': n.image ? 'Yes' : 'No',
+        'Total Score': totalScore,
+        'Average Rating': average,
+        'Number of Votes': voteCount
+      };
     });
+    
+    // Sort by total score (descending)
+    reportData.sort((a, b) => b['Total Score'] - a['Total Score']);
+    
+    // Add ranking
+    reportData.forEach((row, index) => {
+      row.Rank = index + 1;
+    });
+    
+    const ws = XLSX.utils.json_to_sheet(reportData);
+    XLSX.utils.book_append_sheet(wb, ws, cat.name.substring(0, 31)); // Excel sheet name limit
   });
   
-  const blob = new Blob([csv], {type: 'text/csv'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `voting-report-${currentPeriod.replace(' ', '_')}.csv`;
-  a.click();
-  showAlert('Report downloaded!', 'success');
+  // Summary Sheet
+  const summaryData = categories.map(cat => {
+    const catNoms = nominations.filter(n => n.category === cat.name);
+    let totalVotes = 0;
+    catNoms.forEach(n => {
+      Object.values(votes).forEach(v => {
+        if(v.ratings[cat.name]?.[n.id]) totalVotes++;
+      });
+    });
+    return {
+      'Category': cat.name,
+      'Total Nominations': catNoms.length,
+      'Total Votes': totalVotes
+    };
+  });
+  
+  const summaryWS = XLSX.utils.json_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(wb, summaryWS, 'Summary');
+  
+  // Download
+  XLSX.writeFile(wb, `VotingReport_${currentPeriod.replace(' ', '_')}.xlsx`);
+  showAlert('Report downloaded successfully!', 'success');
 }
 
 function showResetModal() {
