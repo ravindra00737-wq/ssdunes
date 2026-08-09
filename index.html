@@ -140,7 +140,7 @@ textarea{resize:vertical;min-height:100px;}
 
 <div class="navbar">
   <div class="nav-content">
-    <button class="nav-btn active" onclick="switchTab('nominate', this)">📝 Submit Nomination</button>
+    <button class="nav-btn active" onclick="switchTab('nominate', this)"> Submit Nomination</button>
     <button class="nav-btn" onclick="switchTab('vote', this)">🗳️ Cast Vote</button>
     <button class="nav-btn" onclick="showAdminLogin()" style="margin-left:auto;">⚙️ Admin Portal</button>
   </div>
@@ -254,7 +254,7 @@ textarea{resize:vertical;min-height:100px;}
     </div>
 
     <div class="card" id="voter-info-card" style="display:none;">
-      <h2 id="votingTitle">🗳️ Cast Your Vote</h2>
+      <h2 id="votingTitle">️ Cast Your Vote</h2>
       <p id="votingSubtitle" class="subtitle">Rate all nominees on a scale of 1-10. Your vote is confidential.</p>
       
       <div class="form-group">
@@ -335,6 +335,7 @@ textarea{resize:vertical;min-height:100px;}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px;margin-top:30px;">
         <div>
           <h3 style="color:var(--brand);margin-bottom:15px;">📊 Live Nominations</h3>
+          <div class="category-tabs" id="nomination-cat-tabs"></div>
           <div id="admin-nominations"></div>
         </div>
         <div>
@@ -354,9 +355,9 @@ textarea{resize:vertical;min-height:100px;}
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
         <h3 style="color:var(--brand);margin-bottom:15px;">📥 Data Management</h3>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-outline" onclick="exportData()">📤 Export All Data</button>
-          <button class="btn btn-outline" onclick="downloadReport()">📥 Download Report</button>
-          <button class="btn btn-danger" onclick="showResetModal()">🔄 Reset for New Month</button>
+          <button class="btn btn-outline" onclick="exportData()"> Export All Data</button>
+          <button class="btn btn-outline" onclick="downloadReport()"> Download Report</button>
+          <button class="btn btn-danger" onclick="showResetModal()"> Reset for New Month</button>
           <button class="btn btn-danger" onclick="resetAllData()">⚠️ Delete All Data</button>
         </div>
       </div>
@@ -434,7 +435,7 @@ textarea{resize:vertical;min-height:100px;}
       </div>
 
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">🏅 Category Management (Month-Wise)</h3>
+        <h3 style="color:var(--brand);margin-bottom:15px;"> Category Management (Month-Wise)</h3>
         <div style="display:flex;gap:10px;margin-bottom:15px;">
           <input type="text" id="new-category" placeholder="New category name" style="flex:1;">
           <button class="btn btn-primary" onclick="addCategory()">Add Category</button>
@@ -551,7 +552,18 @@ textarea{resize:vertical;min-height:100px;}
       <textarea id="edit-nom-desc" rows="4"></textarea>
     </div>
     
-    <button class="btn btn-success btn-full" onclick="saveEditedNomination()"> Save Changes</button>
+    <div class="form-group">
+      <label>Profile Picture</label>
+      <div id="edit-pic-current" style="margin-bottom:10px;"></div>
+      <div class="file-upload" id="edit-pic-drop">
+        <p style="font-size:2.5rem;">📷</p>
+        <p>Click to upload/change photo</p>
+        <input type="file" id="edit-pic-file" accept="image/*">
+      </div>
+      <img id="edit-pic-preview" style="max-width:200px;margin-top:10px;border-radius:8px;display:none;">
+    </div>
+    
+    <button class="btn btn-success btn-full" onclick="saveEditedNomination()">💾 Save Changes</button>
     <button class="btn btn-outline btn-full" onclick="closeEditNominationModal()" style="margin-top:10px;">Cancel</button>
   </div>
 </div>
@@ -598,6 +610,7 @@ let nominations = [];
 let votes = {};
 let categories = [];
 let tempPic = '';
+let tempEditPic = '';
 let tempLogo = '';
 let tempBg = '';
 let currentVoter = {name: '', dept: ''};
@@ -606,6 +619,7 @@ let currentLeader = {name: '', dept: ''};
 let currentPeriod = '';
 let votingSchedule = { start: '', end: '' };
 let currentVoteData = null;
+let currentNominationCategory = 'all';
 
 // ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
@@ -910,6 +924,8 @@ function loadAdminDashboard() {
   db.ref(path).on('value', snap => {
     nominations = snap.val() ? Object.values(snap.val()) : [];
     document.getElementById('stat-nominations').innerText = nominations.length;
+    currentNominationCategory = 'all';
+    renderNominationCategoryTabs();
     renderAdminNominations();
   });
   
@@ -927,16 +943,34 @@ function loadAdminDashboard() {
   renderCategoryList();
 }
 
+function renderNominationCategoryTabs() {
+  const container = document.getElementById('nomination-cat-tabs');
+  container.innerHTML = `<button class="cat-tab ${currentNominationCategory === 'all' ? 'active' : ''}" onclick="filterNominationsByCategory('all', this)">All Categories</button>` +
+    categories.map(c => `<button class="cat-tab ${currentNominationCategory === c.name ? 'active' : ''}" onclick="filterNominationsByCategory('${c.name}', this)">${c.name}</button>`).join('');
+}
+
+function filterNominationsByCategory(category, btn) {
+  currentNominationCategory = category;
+  renderNominationCategoryTabs();
+  renderAdminNominations();
+}
+
 function renderAdminNominations() {
   const container = document.getElementById('admin-nominations');
-  if(nominations.length === 0) {
-    container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No nominations yet.</p>';
+  let filteredNominations = nominations;
+  
+  if(currentNominationCategory !== 'all') {
+    filteredNominations = nominations.filter(n => n.category === currentNominationCategory);
+  }
+  
+  if(filteredNominations.length === 0) {
+    container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No nominations found.</p>';
     return;
   }
   
-  container.innerHTML = nominations.map(n => `
+  container.innerHTML = filteredNominations.map(n => `
     <div style="display:flex;gap:12px;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);">
-      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;">👤</div>'}
+      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;"></div>'}
       <div style="flex:1;">
         <strong style="color:var(--brand);">${n.nomineeName}</strong>
         <small style="color:#666;display:block;">${n.nomineeDept} • ${n.category}</small>
@@ -945,7 +979,7 @@ function renderAdminNominations() {
       </div>
       <div style="display:flex;gap:5px;flex-direction:column;">
         <button class="btn btn-warning btn-sm" onclick="editNomination('${n.id}')">✏️ Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteNomination('${n.id}')">️ Delete</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteNomination('${n.id}')">🗑️ Delete</button>
       </div>
     </div>
   `).join('');
@@ -1123,6 +1157,39 @@ function editNomination(nomId) {
     categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
   catSelect.value = nom.category || '';
   
+  // Handle photo
+  const currentPicDiv = document.getElementById('edit-pic-current');
+  const editPicPreview = document.getElementById('edit-pic-preview');
+  if(nom.image) {
+    currentPicDiv.innerHTML = '<p style="margin-bottom:5px;"><strong>Current Photo:</strong></p><img src="' + nom.image + '" style="max-width:150px;border-radius:8px;">';
+    editPicPreview.src = nom.image;
+    editPicPreview.style.display = 'block';
+    tempEditPic = nom.image;
+  } else {
+    currentPicDiv.innerHTML = '<p style="color:#999;margin-bottom:10px;">No photo uploaded</p>';
+    editPicPreview.style.display = 'none';
+    tempEditPic = '';
+  }
+  
+  // Setup file upload for edit
+  const editPicDrop = document.getElementById('edit-pic-drop');
+  const editPicFile = document.getElementById('edit-pic-file');
+  
+  editPicDrop.onclick = () => editPicFile.click();
+  editPicFile.onchange = function(e) {
+    const file = e.target.files[0];
+    if(file) {
+      if(!file.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        editPicPreview.src = ev.target.result;
+        editPicPreview.style.display = 'block';
+        tempEditPic = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
   document.getElementById('edit-nomination-modal').classList.add('active');
 }
 
@@ -1143,6 +1210,7 @@ function saveEditedNomination() {
     id: nomId,
     leaderName, leaderDept, nomineeName: nomName, nomineeDept: nomDept,
     category, description: desc,
+    image: tempEditPic || '',
     timestamp: new Date().toISOString()
   };
   
@@ -1150,11 +1218,13 @@ function saveEditedNomination() {
   db.ref(path).set(updatedNom).then(() => {
     showAlert('Nomination updated successfully!', 'success');
     closeEditNominationModal();
+    tempEditPic = '';
   }).catch(err => showAlert('Error: ' + err.message, 'error'));
 }
 
 function closeEditNominationModal() {
   document.getElementById('edit-nomination-modal').classList.remove('active');
+  tempEditPic = '';
 }
 
 // ============ NOMINATION FUNCTIONS ============
@@ -1242,11 +1312,11 @@ function checkVotingStatus() {
   const voterInfoCard = document.getElementById('voter-info-card');
   
   if (!startTime || !endTime) {
-    statusTitle.innerText = '️ Voting Schedule Not Set';
+    statusTitle.innerText = '⚠️ Voting Schedule Not Set';
     statusMessage.innerText = 'The admin has not set a voting schedule yet. Please check back later.';
     voterInfoCard.style.display = 'none';
   } else if (now < startTime) {
-    statusTitle.innerText = ' Voting Has Not Started';
+    statusTitle.innerText = '⏳ Voting Has Not Started';
     statusMessage.innerText = `Voting will open on ${startTime.toLocaleString()}. Please wait until then.`;
     voterInfoCard.style.display = 'none';
   } else if (now > endTime) {
