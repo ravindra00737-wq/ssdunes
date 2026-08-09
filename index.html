@@ -44,6 +44,10 @@ textarea{resize:vertical;min-height:100px;}
 .btn-danger:hover{background:#c0392b;}
 .btn-outline{background:transparent;border:2px solid var(--brand);color:var(--brand);}
 .btn-outline:hover{background:var(--brand);color:#fff;}
+.btn-warning{background:#f39c12;color:#fff;}
+.btn-warning:hover{background:#e67e22;}
+.btn-info{background:#3498db;color:#fff;}
+.btn-info:hover{background:#2980b9;}
 .btn-full{width:100%;justify-content:center;margin-top:15px;padding:15px;font-size:1.1rem;}
 .btn-sm{padding:8px 15px;font-size:0.85rem;}
 
@@ -87,7 +91,7 @@ textarea{resize:vertical;min-height:100px;}
 
 .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
 .modal.active{display:flex;}
-.modal-content{background:#fff;padding:30px;border-radius:15px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto;animation:modalSlide 0.3s;}
+.modal-content{background:#fff;padding:30px;border-radius:15px;max-width:700px;width:90%;max-height:90vh;overflow-y:auto;animation:modalSlide 0.3s;}
 @keyframes modalSlide{from{opacity:0;transform:scale(0.9);}to{opacity:1;transform:scale(1);}}
 
 .progress-container{background:#e0d8e0;height:10px;border-radius:5px;overflow:hidden;margin:15px 0;}
@@ -103,6 +107,13 @@ textarea{resize:vertical;min-height:100px;}
 .period-selector select{padding:8px 12px;border-radius:6px;border:none;font-size:1rem;}
 .period-selector button{padding:8px 16px;background:#fff;color:var(--brand);border:none;border-radius:6px;cursor:pointer;font-weight:bold;}
 .period-selector button:hover{background:#f0e8f0;}
+
+.vote-item{background:#faf7fa;border-radius:8px;padding:15px;margin-bottom:10px;border-left:4px solid var(--brand);}
+.vote-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.vote-item-details{font-size:0.9rem;color:#666;}
+.vote-ratings{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.vote-rating-row{display:flex;justify-content:space-between;align-items:center;padding:8px;background:#fff;border-radius:6px;margin-bottom:5px;}
+.vote-rating-row input{width:80px;padding:6px;text-align:center;border:2px solid var(--border);border-radius:6px;}
 
 @media(max-width:768px){
   .header-content{flex-direction:column;text-align:center;}
@@ -237,13 +248,11 @@ textarea{resize:vertical;min-height:100px;}
 
   <!-- VOTING TAB -->
   <div id="tab-vote" class="tab-content">
-    <!-- Voting Status Card -->
     <div class="card" id="voting-status-card" style="text-align:center; padding: 40px;">
       <h2 id="voting-status-title" style="color:var(--brand); margin-bottom: 15px;">🗳️ Voting Status</h2>
       <p id="voting-status-message" class="subtitle" style="font-size: 1.1rem;">Loading voting status...</p>
     </div>
 
-    <!-- Voter Info Card (Hidden until voting is open) -->
     <div class="card" id="voter-info-card" style="display:none;">
       <h2 id="votingTitle">🗳️ Cast Your Vote</h2>
       <p id="votingSubtitle" class="subtitle">Rate all nominees on a scale of 1-10. Your vote is confidential.</p>
@@ -308,7 +317,6 @@ textarea{resize:vertical;min-height:100px;}
     <div class="card">
       <h2>⚙️ Admin Dashboard</h2>
       
-      <!-- Period Selector -->
       <div class="period-selector">
         <label style="color:#fff;font-weight:bold;">Select Award Period:</label>
         <select id="admin-period-month"></select>
@@ -334,6 +342,13 @@ textarea{resize:vertical;min-height:100px;}
           <div class="category-tabs" id="admin-cat-tabs"></div>
           <div id="admin-results"></div>
         </div>
+      </div>
+
+      <!-- NEW: Vote Management Section -->
+      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+        <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Vote Management</h3>
+        <p style="color:#666;margin-bottom:15px;">View, edit, or delete individual votes. Click "View Details" to see and modify ratings.</p>
+        <div id="admin-votes-list"></div>
       </div>
 
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
@@ -402,7 +417,6 @@ textarea{resize:vertical;min-height:100px;}
         </div>
       </div>
 
-      <!-- NEW: Voting Schedule Section -->
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
         <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Voting Schedule Control</h3>
         <div class="settings-grid">
@@ -467,6 +481,103 @@ textarea{resize:vertical;min-height:100px;}
   </div>
 </div>
 
+<!-- Edit Nomination Modal -->
+<div id="edit-nomination-modal" class="modal">
+  <div class="modal-content">
+    <h2 style="color:var(--brand);margin-bottom:20px;">✏️ Edit Nomination</h2>
+    <input type="hidden" id="edit-nom-id">
+    
+    <div class="form-group">
+      <label>Leader/Nominator Name *</label>
+      <input type="text" id="edit-nom-leader-name">
+    </div>
+    
+    <div class="form-group">
+      <label>Leader Department *</label>
+      <select id="edit-nom-leader-dept">
+        <option value="">Select Department</option>
+        <option value="Executive Office">Executive Office</option>
+        <option value="Human Resources">Human Resources</option>
+        <option value="Front Office">Front Office</option>
+        <option value="F&B Service">F&B Service</option>
+        <option value="Kitchen">Kitchen</option>
+        <option value="Kitchen Stewarding">Kitchen Stewarding</option>
+        <option value="Housekeeping & Laundry">Housekeeping & Laundry</option>
+        <option value="Security">Security</option>
+        <option value="Spa">Spa</option>
+        <option value="Sales & Marketing">Sales & Marketing</option>
+        <option value="Engineering & Landscaping">Engineering & Landscaping</option>
+        <option value="Landscaping">Landscaping</option>
+        <option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option>
+        <option value="Sustainability">Sustainability</option>
+        <option value="Reservations">Reservations</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Nominee Full Name *</label>
+      <input type="text" id="edit-nom-name">
+    </div>
+    
+    <div class="form-group">
+      <label>Nominee Department *</label>
+      <select id="edit-nom-dept">
+        <option value="">Select Department</option>
+        <option value="Executive Office">Executive Office</option>
+        <option value="Human Resources">Human Resources</option>
+        <option value="Front Office">Front Office</option>
+        <option value="F&B Service">F&B Service</option>
+        <option value="Kitchen">Kitchen</option>
+        <option value="Kitchen Stewarding">Kitchen Stewarding</option>
+        <option value="Housekeeping & Laundry">Housekeeping & Laundry</option>
+        <option value="Security">Security</option>
+        <option value="Spa">Spa</option>
+        <option value="Sales & Marketing">Sales & Marketing</option>
+        <option value="Engineering & Landscaping">Engineering & Landscaping</option>
+        <option value="Landscaping">Landscaping</option>
+        <option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option>
+        <option value="Sustainability">Sustainability</option>
+        <option value="Reservations">Reservations</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Award Category *</label>
+      <select id="edit-nom-category"></select>
+    </div>
+    
+    <div class="form-group">
+      <label>Reason for Nomination *</label>
+      <textarea id="edit-nom-desc" rows="4"></textarea>
+    </div>
+    
+    <button class="btn btn-success btn-full" onclick="saveEditedNomination()"> Save Changes</button>
+    <button class="btn btn-outline btn-full" onclick="closeEditNominationModal()" style="margin-top:10px;">Cancel</button>
+  </div>
+</div>
+
+<!-- View/Edit Vote Modal -->
+<div id="view-vote-modal" class="modal">
+  <div class="modal-content" style="max-width:800px;">
+    <h2 style="color:var(--brand);margin-bottom:20px;">🗳️ View/Edit Vote Details</h2>
+    <input type="hidden" id="view-vote-id">
+    
+    <div style="background:#f0e8f0;padding:15px;border-radius:8px;margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><strong>Voter Name:</strong> <span id="view-voter-name"></span></div>
+        <div><strong>Department:</strong> <span id="view-voter-dept"></span></div>
+        <div><strong>Voted At:</strong> <span id="view-vote-time"></span></div>
+      </div>
+    </div>
+    
+    <h3 style="color:var(--brand);margin-bottom:15px;">Ratings</h3>
+    <div id="view-vote-ratings"></div>
+    
+    <button class="btn btn-success btn-full" onclick="saveEditedVote()" style="margin-top:20px;">💾 Save Changes</button>
+    <button class="btn btn-outline btn-full" onclick="closeViewVoteModal()" style="margin-top:10px;">Cancel</button>
+  </div>
+</div>
+
 <script>
 // ============ FIREBASE CONFIG ============
 const firebaseConfig = {
@@ -494,6 +605,7 @@ let voterRatings = {};
 let currentLeader = {name: '', dept: ''};
 let currentPeriod = '';
 let votingSchedule = { start: '', end: '' };
+let currentVoteData = null;
 
 // ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
@@ -809,6 +921,7 @@ function loadAdminDashboard() {
     document.getElementById('stat-votes').innerText = voteCount;
     document.getElementById('stat-voters').innerText = uniqueVoters;
     renderAdminResults();
+    renderAdminVotes();
   });
   
   renderCategoryList();
@@ -823,14 +936,17 @@ function renderAdminNominations() {
   
   container.innerHTML = nominations.map(n => `
     <div style="display:flex;gap:12px;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);">
-      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;"></div>'}
+      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;">👤</div>'}
       <div style="flex:1;">
         <strong style="color:var(--brand);">${n.nomineeName}</strong>
         <small style="color:#666;display:block;">${n.nomineeDept} • ${n.category}</small>
         <small style="color:#888;display:block;">By: ${n.leaderName} (${n.leaderDept})</small>
         <small style="font-style:italic;color:#555;display:block;">"${n.description.substring(0, 60)}${n.description.length > 60 ? '...' : ''}"</small>
       </div>
-      <button class="btn btn-danger btn-sm" onclick="deleteNomination('${n.id}')">Delete</button>
+      <div style="display:flex;gap:5px;flex-direction:column;">
+        <button class="btn btn-warning btn-sm" onclick="editNomination('${n.id}')">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteNomination('${n.id}')">️ Delete</button>
+      </div>
     </div>
   `).join('');
 }
@@ -879,6 +995,166 @@ function showAdminCategory(catName, btn) {
           `).join('')}
         </tbody>
       </table>`;
+}
+
+// ============ VOTE MANAGEMENT ============
+function renderAdminVotes() {
+  const container = document.getElementById('admin-votes-list');
+  const voteEntries = Object.entries(votes);
+  
+  if(voteEntries.length === 0) {
+    container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No votes cast yet.</p>';
+    return;
+  }
+  
+  container.innerHTML = voteEntries.map(([voteId, vote]) => `
+    <div class="vote-item">
+      <div class="vote-item-header">
+        <div>
+          <strong style="color:var(--brand);">${vote.voterName}</strong>
+          <span class="vote-item-details"> • ${vote.voterDept} • ${new Date(vote.timestamp).toLocaleString()}</span>
+        </div>
+        <div style="display:flex;gap:5px;">
+          <button class="btn btn-info btn-sm" onclick="viewVote('${voteId}')">👁️ View/Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteVote('${voteId}')">🗑️ Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function viewVote(voteId) {
+  const vote = votes[voteId];
+  if(!vote) return showAlert('Vote not found.', 'error');
+  
+  currentVoteData = { id: voteId, ...vote };
+  
+  document.getElementById('view-vote-id').value = voteId;
+  document.getElementById('view-voter-name').innerText = vote.voterName;
+  document.getElementById('view-voter-dept').innerText = vote.voterDept;
+  document.getElementById('view-vote-time').innerText = new Date(vote.timestamp).toLocaleString();
+  
+  const ratingsContainer = document.getElementById('view-vote-ratings');
+  let ratingsHtml = '';
+  
+  categories.forEach(cat => {
+    const catRatings = vote.ratings[cat.name] || {};
+    const catNoms = nominations.filter(n => n.category === cat.name);
+    
+    if(catNoms.length > 0) {
+      ratingsHtml += `<div style="margin-bottom:20px;"><h4 style="color:var(--brand);margin-bottom:10px;">${cat.name}</h4>`;
+      catNoms.forEach(nom => {
+        const rating = catRatings[nom.id] || '';
+        ratingsHtml += `
+          <div class="vote-rating-row">
+            <span><strong>${nom.nomineeName}</strong> <small style="color:#666;">(${nom.nomineeDept})</small></span>
+            <input type="number" min="1" max="10" value="${rating}" 
+                   data-cat="${cat.name}" data-nom="${nom.id}" 
+                   class="edit-vote-rating" placeholder="—">
+          </div>
+        `;
+      });
+      ratingsHtml += '</div>';
+    }
+  });
+  
+  ratingsContainer.innerHTML = ratingsHtml || '<p style="color:#999;">No ratings found.</p>';
+  document.getElementById('view-vote-modal').classList.add('active');
+}
+
+function saveEditedVote() {
+  const voteId = document.getElementById('view-vote-id').value;
+  const ratingInputs = document.querySelectorAll('.edit-vote-rating');
+  
+  const updatedRatings = {};
+  ratingInputs.forEach(input => {
+    const catName = input.dataset.cat;
+    const nomId = input.dataset.nom;
+    const val = parseInt(input.value);
+    
+    if(!updatedRatings[catName]) updatedRatings[catName] = {};
+    if(!isNaN(val) && val >= 1 && val <= 10) {
+      updatedRatings[catName][nomId] = val;
+    }
+  });
+  
+  const updatedVote = {
+    voterName: currentVoteData.voterName,
+    voterDept: currentVoteData.voterDept,
+    timestamp: currentVoteData.timestamp,
+    ratings: updatedRatings
+  };
+  
+  const path = 'votes/' + currentPeriod.replace(' ', '_') + '/' + voteId;
+  db.ref(path).set(updatedVote).then(() => {
+    showAlert('Vote updated successfully!', 'success');
+    closeViewVoteModal();
+  }).catch(err => showAlert('Error: ' + err.message, 'error'));
+}
+
+function deleteVote(voteId) {
+  if(!confirm('Are you sure you want to delete this vote? This action cannot be undone.')) return;
+  
+  const path = 'votes/' + currentPeriod.replace(' ', '_') + '/' + voteId;
+  db.ref(path).remove().then(() => {
+    showAlert('Vote deleted successfully.', 'success');
+  }).catch(err => showAlert('Error: ' + err.message, 'error'));
+}
+
+function closeViewVoteModal() {
+  document.getElementById('view-vote-modal').classList.remove('active');
+  currentVoteData = null;
+}
+
+// ============ NOMINATION EDIT FUNCTIONS ============
+function editNomination(nomId) {
+  const nom = nominations.find(n => n.id === nomId);
+  if(!nom) return showAlert('Nomination not found.', 'error');
+  
+  document.getElementById('edit-nom-id').value = nomId;
+  document.getElementById('edit-nom-leader-name').value = nom.leaderName || '';
+  document.getElementById('edit-nom-leader-dept').value = nom.leaderDept || '';
+  document.getElementById('edit-nom-name').value = nom.nomineeName || '';
+  document.getElementById('edit-nom-dept').value = nom.nomineeDept || '';
+  document.getElementById('edit-nom-desc').value = nom.description || '';
+  
+  const catSelect = document.getElementById('edit-nom-category');
+  catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
+    categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  catSelect.value = nom.category || '';
+  
+  document.getElementById('edit-nomination-modal').classList.add('active');
+}
+
+function saveEditedNomination() {
+  const nomId = document.getElementById('edit-nom-id').value;
+  const leaderName = document.getElementById('edit-nom-leader-name').value.trim();
+  const leaderDept = document.getElementById('edit-nom-leader-dept').value.trim();
+  const nomName = document.getElementById('edit-nom-name').value.trim();
+  const nomDept = document.getElementById('edit-nom-dept').value.trim();
+  const category = document.getElementById('edit-nom-category').value;
+  const desc = document.getElementById('edit-nom-desc').value.trim();
+  
+  if(!leaderName || !leaderDept || !nomName || !nomDept || !category || !desc) {
+    return showAlert('Please fill all required fields.', 'error');
+  }
+  
+  const updatedNom = {
+    id: nomId,
+    leaderName, leaderDept, nomineeName: nomName, nomineeDept: nomDept,
+    category, description: desc,
+    timestamp: new Date().toISOString()
+  };
+  
+  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + nomId;
+  db.ref(path).set(updatedNom).then(() => {
+    showAlert('Nomination updated successfully!', 'success');
+    closeEditNominationModal();
+  }).catch(err => showAlert('Error: ' + err.message, 'error'));
+}
+
+function closeEditNominationModal() {
+  document.getElementById('edit-nomination-modal').classList.remove('active');
 }
 
 // ============ NOMINATION FUNCTIONS ============
@@ -966,11 +1242,11 @@ function checkVotingStatus() {
   const voterInfoCard = document.getElementById('voter-info-card');
   
   if (!startTime || !endTime) {
-    statusTitle.innerText = '⚠️ Voting Schedule Not Set';
+    statusTitle.innerText = '️ Voting Schedule Not Set';
     statusMessage.innerText = 'The admin has not set a voting schedule yet. Please check back later.';
     voterInfoCard.style.display = 'none';
   } else if (now < startTime) {
-    statusTitle.innerText = '⏳ Voting Has Not Started';
+    statusTitle.innerText = ' Voting Has Not Started';
     statusMessage.innerText = `Voting will open on ${startTime.toLocaleString()}. Please wait until then.`;
     voterInfoCard.style.display = 'none';
   } else if (now > endTime) {
@@ -1000,7 +1276,6 @@ function startVoting() {
   
   if(!name || !dept) return showAlert('Please fill both fields.', 'error');
   
-  // Double-check voting schedule before allowing start
   const now = new Date();
   const startTime = votingSchedule.start ? new Date(votingSchedule.start) : null;
   const endTime = votingSchedule.end ? new Date(votingSchedule.end) : null;
@@ -1117,7 +1392,7 @@ function submitVotes() {
       document.getElementById('voter-name').value = '';
       document.getElementById('voter-dept').value = '';
       voterRatings = {};
-      checkVotingStatus(); // Re-check status after voting
+      checkVotingStatus();
     })
     .catch(err => showAlert('Error: ' + err.message, 'error'));
 }
