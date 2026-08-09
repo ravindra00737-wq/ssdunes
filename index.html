@@ -1288,4 +1288,337 @@ function loadMyNominations() {
 function deleteMyNomination(id) {
   if(!confirm('Delete this nomination?')) return;
   const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + id;
-  db.ref(path).remove
+  db.ref(path).remove().then(() => {
+    showAlert('Nomination deleted.', 'success');
+    loadMyNominations();
+  });
+}
+
+function deleteNomination(id) {
+  if(!confirm('Delete this nomination?')) return;
+  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + id;
+  db.ref(path).remove();
+}
+
+// ============ VOTING FUNCTIONS ============
+function checkVotingStatus() {
+  const now = new Date();
+  const startTime = votingSchedule.start ? new Date(votingSchedule.start) : null;
+  const endTime = votingSchedule.end ? new Date(votingSchedule.end) : null;
+  
+  const statusTitle = document.getElementById('voting-status-title');
+  const statusMessage = document.getElementById('voting-status-message');
+  const voterInfoCard = document.getElementById('voter-info-card');
+  
+  if (!startTime || !endTime) {
+    statusTitle.innerText = '⚠️ Voting Schedule Not Set';
+    statusMessage.innerText = 'The admin has not set a voting schedule yet. Please check back later.';
+    voterInfoCard.style.display = 'none';
+  } else if (now < startTime) {
+    statusTitle.innerText = '⏳ Voting Has Not Started';
+    statusMessage.innerText = `Voting will open on ${startTime.toLocaleString()}. Please wait until then.`;
+    voterInfoCard.style.display = 'none';
+  } else if (now > endTime) {
+    statusTitle.innerText = '🔒 Voting Has Closed';
+    statusMessage.innerText = `Voting closed on ${endTime.toLocaleString()}. Thank you to everyone who participated!`;
+    voterInfoCard.style.display = 'none';
+  } else {
+    statusTitle.innerText = '✅ Voting is Open!';
+    statusMessage.innerText = `Voting is currently open. It will close on ${endTime.toLocaleString()}.`;
+    voterInfoCard.style.display = 'block';
+  }
+}
+
+function loadNomineesForVoting() {
+  const path = 'nominations/' + currentPeriod.replace(' ', '_');
+  db.ref(path).on('value', snap => {
+    nominations = snap.val() ? Object.values(snap.val()) : [];
+    if(document.getElementById('voting-interface').style.display !== 'none') {
+      renderVotingInterface();
+    }
+  });
+}
+
+function startVoting() {
+  const name = document.getElementById('voter-name').value.trim();
+  const dept = document.getElementById('voter-dept').value.trim();
+  
+  if(!name || !dept) return showAlert('Please fill both fields.', 'error');
+  
+  const now = new Date();
+  const startTime = votingSchedule.start ? new Date(votingSchedule.start) : null;
+  const endTime = votingSchedule.end ? new Date(votingSchedule.end) : null;
+  
+  if ((startTime && now < startTime) || (endTime && now > endTime)) {
+    return showAlert('Voting is not currently open.', 'error');
+  }
+  
+  currentVoter = {name, dept};
+  document.getElementById('voter-display').innerText = name + ' (' + dept + ')';
+  document.getElementById('voter-info-card').style.display = 'none';
+  document.getElementById('voting-interface').style.display = 'block';
+  
+  voterRatings = {};
+  categories.forEach(c => voterRatings[c.name] = {});
+  
+  renderVotingInterface();
+}
+
+function renderVotingInterface() {
+  document.getElementById('cat-tabs').innerHTML = categories.map((c, i) => {
+    const count = nominations.filter(n => n.category === c.name).length;
+    return `<button class="cat-tab ${i === 0 ? 'active' : ''}" onclick="showCategory('${c.name}', this)">${c.name} (${count})</button>`;
+  }).join('');
+  
+  document.getElementById('nominee-list').innerHTML = categories.map((c, i) => {
+    const noms = nominations.filter(n => n.category === c.name);
+    if(noms.length === 0) return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}"><p style="text-align:center;padding:30px;color:#888;">No nominations yet.</p></div>`;
+    
+    return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}">
+      <div class="nominee-grid">
+        ${noms.map(n => `
+          <div class="nominee-card">
+            <div class="nominee-header">
+              <div class="nominee-img">${n.image ? `<img src="${n.image}">` : '👤'}</div>
+              <h3>${n.nomineeName}</h3>
+            </div>
+            <div class="nominee-body">
+              <div class="nominee-meta">
+                <div><strong>Department:</strong> ${n.nomineeDept}</div>
+                <div><strong>Category:</strong> ${n.category}</div>
+                <div><strong>Nominated by:</strong> ${n.leaderName}</div>
+              </div>
+              <p class="nominee-desc">${n.description}</p>
+              <div class="rating-input">
+                <label>Your Rating (1-10):</label>
+                <input type="number" min="1" max="10" class="rate-input" data-cat="${c.name}" data-nom="${n.id}" placeholder="—">
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  
+  document.querySelectorAll('.rate-input').forEach(inp => {
+    inp.oninput = function() {
+      const catName = this.dataset.cat;
+      const nomId = this.dataset.nom;
+      const val = parseInt(this.value);
+      
+      if(this.value === '' || (!isNaN(val) && val >= 1 && val <= 10)) {
+        this.style.borderColor = 'var(--border)';
+        if(this.value === '') delete voterRatings[catName][nomId];
+        else voterRatings[catName][nomId] = val;
+        updateProgress();
+      } else {
+        this.style.borderColor = '#c0392b';
+      }
+    };
+  });
+  
+  updateProgress();
+}
+
+function showCategory(catName, btn) {
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.cat-panel').forEach(p => p.style.display = p.dataset.cat === catName ? 'block' : 'none');
+}
+
+function updateProgress() {
+  const total = nominations.length;
+  let done = 0;
+  Object.values(voterRatings).forEach(catRatings => done += Object.keys(catRatings).length);
+  document.getElementById('progress-text').innerText = done + ' of ' + total + ' rated';
+  document.getElementById('progress-fill').style.width = (total ? (done / total * 100) : 0) + '%';
+}
+
+function submitVotes() {
+  let missing = 0;
+  categories.forEach(c => {
+    const noms = nominations.filter(n => n.category === c.name);
+    noms.forEach(n => {
+      if(!voterRatings[c.name] || !voterRatings[c.name][n.id]) missing++;
+    });
+  });
+  
+  if(missing > 0) return showAlert('Please rate all nominees. ' + missing + ' missing.', 'error');
+  
+  const voteData = {
+    voterName: currentVoter.name,
+    voterDept: currentVoter.dept,
+    timestamp: new Date().toISOString(),
+    ratings: voterRatings
+  };
+  
+  const path = 'votes/' + currentPeriod.replace(' ', '_') + '/' + Date.now();
+  db.ref(path).set(voteData)
+    .then(() => {
+      showAlert('Votes submitted successfully!', 'success');
+      document.getElementById('voting-interface').style.display = 'none';
+      document.getElementById('voter-info-card').style.display = 'block';
+      document.getElementById('voter-name').value = '';
+      document.getElementById('voter-dept').value = '';
+      voterRatings = {};
+      checkVotingStatus();
+    })
+    .catch(err => showAlert('Error: ' + err.message, 'error'));
+}
+
+// ============ DATA MANAGEMENT ============
+function exportData() {
+  const data = {
+    period: currentPeriod,
+    nominations, votes, categories,
+    exportedAt: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `voting-data-${currentPeriod.replace(' ', '_')}.json`;
+  a.click();
+  showAlert('Data exported!', 'success');
+}
+
+function downloadReport() {
+  let csv = 'Category,Nominee,Department,Nominated By,Total Score,Average,Votes\n';
+  categories.forEach(cat => {
+    const noms = nominations.filter(n => n.category === cat.name);
+    noms.forEach(n => {
+      let total = 0, count = 0;
+      Object.values(votes).forEach(v => {
+        const rating = v.ratings[cat.name]?.[n.id];
+        if(rating) { total += parseInt(rating); count++; }
+      });
+      const avg = count ? (total / count).toFixed(2) : 0;
+      csv += `"${cat.name}","${n.nomineeName}","${n.nomineeDept}","${n.leaderName}",${total},${avg},${count}\n`;
+    });
+  });
+  
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `voting-report-${currentPeriod.replace(' ', '_')}.csv`;
+  a.click();
+  showAlert('Report downloaded!', 'success');
+}
+
+function showResetModal() {
+  document.getElementById('reset-modal').classList.add('active');
+}
+
+function closeResetModal() {
+  document.getElementById('reset-modal').classList.remove('active');
+}
+
+function confirmReset() {
+  const month = document.getElementById('reset-month').value;
+  const year = document.getElementById('reset-year').value;
+  const newPeriod = `${month} ${year}`;
+  
+  if(confirm(`This will archive data for "${currentPeriod}" and reset for "${newPeriod}". Continue?`)) {
+    const oldPath = currentPeriod.replace(' ', '_');
+    const newPath = newPeriod.replace(' ', '_');
+    
+    db.ref('archive/' + oldPath).set({
+      nominations, votes, categories,
+      archivedAt: new Date().toISOString(),
+      period: currentPeriod
+    });
+    
+    db.ref('nominations/' + oldPath).remove();
+    db.ref('votes/' + oldPath).remove();
+    
+    currentPeriod = newPeriod;
+    db.ref('settings/currentPeriod').set({month, year});
+    
+    categories = [
+      {id: 1, name: "Host of the Month (FOH)"},
+      {id: 2, name: "Host of the Month (HOH)"},
+      {id: 3, name: "Leader of the Quarter"},
+      {id: 4, name: "Sustainability Hero of the Month"}
+    ];
+    const catObj = {};
+    categories.forEach(c => catObj[c.id] = c);
+    db.ref('categories/' + newPath).set(catObj);
+    
+    closeResetModal();
+    showAlert('Data archived and reset for ' + newPeriod, 'success');
+    loadAdminDashboard();
+  }
+}
+
+function resetAllData() {
+  if(!confirm('⚠️ WARNING: This will permanently delete ALL data. Continue?')) return;
+  if(!confirm('Are you absolutely sure? This cannot be undone!')) return;
+  
+  db.ref('nominations').remove();
+  db.ref('votes').remove();
+  db.ref('categories').remove();
+  showAlert('All data deleted.', 'success');
+}
+
+// ============ IMAGE UPLOAD ============
+const picDrop = document.getElementById('pic-drop');
+const picFile = document.getElementById('pic-file');
+const picPreview = document.getElementById('pic-preview');
+
+picDrop.onclick = () => picFile.click();
+picDrop.ondragover = e => { e.preventDefault(); picDrop.classList.add('dragover'); };
+picDrop.ondragleave = () => picDrop.classList.remove('dragover');
+picDrop.ondrop = e => { e.preventDefault(); picDrop.classList.remove('dragover'); if(e.dataTransfer.files[0]) handlePicFile(e.dataTransfer.files[0]); };
+picFile.onchange = e => { if(e.target.files[0]) handlePicFile(e.target.files[0]); };
+
+function handlePicFile(f) {
+  if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+  const r = new FileReader();
+  r.onload = ev => { picPreview.src = ev.target.result; picPreview.style.display = 'block'; tempPic = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+const logoDrop = document.getElementById('logo-drop');
+const logoFile = document.getElementById('logo-file');
+const logoPreview = document.getElementById('logo-preview');
+
+logoDrop.onclick = () => logoFile.click();
+logoFile.onchange = e => { if(e.target.files[0]) handleLogoFile(e.target.files[0]); };
+
+function handleLogoFile(f) {
+  if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+  const r = new FileReader();
+  r.onload = ev => { logoPreview.src = ev.target.result; logoPreview.style.display = 'block'; tempLogo = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+const bgDrop = document.getElementById('bg-drop');
+const bgFile = document.getElementById('bg-file');
+const bgPreview = document.getElementById('bg-preview');
+
+bgDrop.onclick = () => bgFile.click();
+bgFile.onchange = e => { if(e.target.files[0]) handleBgFile(e.target.files[0]); };
+
+function handleBgFile(f) {
+  if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+  const r = new FileReader();
+  r.onload = ev => { bgPreview.src = ev.target.result; bgPreview.style.display = 'block'; tempBg = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+// ============ UTILITIES ============
+function showAlert(msg, type) {
+  const el = document.getElementById('alert-' + type);
+  el.innerText = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+function loadNominations() {
+  const path = 'nominations/' + currentPeriod.replace(' ', '_');
+  db.ref(path).on('value', snap => {
+    nominations = snap.val() ? Object.values(snap.val()) : [];
+  });
+}
+</script>
+</body>
+</html>
