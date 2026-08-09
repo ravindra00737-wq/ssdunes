@@ -31,7 +31,7 @@ body{font-family:'Book Antiqua',serif;background:var(--bg);background-size:cover
 
 .form-group{margin-bottom:18px;}
 label{display:block;margin-bottom:6px;font-weight:bold;color:#555;font-size:0.95rem;}
-input[type=text],input[type=password],input[type=email],input[type=file],input[type=url],input[type=number],select,textarea{width:100%;padding:12px 15px;border:2px solid var(--border);border-radius:8px;font-family:inherit;font-size:1rem;transition:all 0.3s;}
+input[type=text],input[type=password],input[type=email],input[type=file],input[type=url],input[type=number],input[type=datetime-local],select,textarea{width:100%;padding:12px 15px;border:2px solid var(--border);border-radius:8px;font-family:inherit;font-size:1rem;transition:all 0.3s;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(109,48,99,0.1);}
 textarea{resize:vertical;min-height:100px;}
 
@@ -237,7 +237,14 @@ textarea{resize:vertical;min-height:100px;}
 
   <!-- VOTING TAB -->
   <div id="tab-vote" class="tab-content">
-    <div class="card" id="voter-info-card">
+    <!-- Voting Status Card -->
+    <div class="card" id="voting-status-card" style="text-align:center; padding: 40px;">
+      <h2 id="voting-status-title" style="color:var(--brand); margin-bottom: 15px;">🗳️ Voting Status</h2>
+      <p id="voting-status-message" class="subtitle" style="font-size: 1.1rem;">Loading voting status...</p>
+    </div>
+
+    <!-- Voter Info Card (Hidden until voting is open) -->
+    <div class="card" id="voter-info-card" style="display:none;">
       <h2 id="votingTitle">🗳️ Cast Your Vote</h2>
       <p id="votingSubtitle" class="subtitle">Rate all nominees on a scale of 1-10. Your vote is confidential.</p>
       
@@ -395,6 +402,23 @@ textarea{resize:vertical;min-height:100px;}
         </div>
       </div>
 
+      <!-- NEW: Voting Schedule Section -->
+      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+        <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Voting Schedule Control</h3>
+        <div class="settings-grid">
+          <div class="form-group">
+            <label>Voting Start Date & Time</label>
+            <input type="datetime-local" id="voting-start-time">
+          </div>
+          <div class="form-group">
+            <label>Voting End Date & Time</label>
+            <input type="datetime-local" id="voting-end-time">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveVotingSchedule()" style="margin-top:10px;">💾 Save Voting Schedule</button>
+        <p style="margin-top:10px;color:#666;font-size:0.9rem;">Note: Users will only be able to cast votes within this time window. If no schedule is set, voting will be disabled.</p>
+      </div>
+
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
         <h3 style="color:var(--brand);margin-bottom:15px;">🏅 Category Management (Month-Wise)</h3>
         <div style="display:flex;gap:10px;margin-bottom:15px;">
@@ -469,12 +493,14 @@ let currentVoter = {name: '', dept: ''};
 let voterRatings = {};
 let currentLeader = {name: '', dept: ''};
 let currentPeriod = '';
+let votingSchedule = { start: '', end: '' };
 
 // ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
   populatePeriodSelectors();
   loadBranding();
   loadPageSettings();
+  loadVotingSchedule();
   loadCurrentPeriod();
 });
 
@@ -482,7 +508,6 @@ function populatePeriodSelectors() {
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const currentYear = new Date().getFullYear();
   
-  // Admin period selectors
   const adminMonthSelect = document.getElementById('admin-period-month');
   const adminYearSelect = document.getElementById('admin-period-year');
   months.forEach((m, i) => {
@@ -498,7 +523,6 @@ function populatePeriodSelectors() {
     adminYearSelect.appendChild(opt);
   }
   
-  // Reset modal selectors
   const resetMonthSelect = document.getElementById('reset-month');
   const resetYearSelect = document.getElementById('reset-year');
   resetMonthSelect.selectedIndex = new Date().getMonth();
@@ -509,6 +533,30 @@ function populatePeriodSelectors() {
     if(i === currentYear) opt.selected = true;
     resetYearSelect.appendChild(opt);
   }
+}
+
+function loadVotingSchedule() {
+  db.ref('settings/votingSchedule').once('value', snap => {
+    const data = snap.val();
+    if (data) {
+      votingSchedule = data;
+      document.getElementById('voting-start-time').value = data.start || '';
+      document.getElementById('voting-end-time').value = data.end || '';
+    }
+  });
+}
+
+function saveVotingSchedule() {
+  const start = document.getElementById('voting-start-time').value;
+  const end = document.getElementById('voting-end-time').value;
+  
+  if (!start || !end) return showAlert('Please set both start and end times.', 'error');
+  if (new Date(start) >= new Date(end)) return showAlert('Start time must be before end time.', 'error');
+  
+  db.ref('settings/votingSchedule').set({ start, end }).then(() => {
+    votingSchedule = { start, end };
+    showAlert('Voting schedule saved successfully!', 'success');
+  });
 }
 
 function loadCurrentPeriod() {
@@ -717,7 +765,10 @@ function switchTab(tab, btn) {
     loadMyNominations();
     loadCategoriesForPeriod();
   }
-  if(tab === 'vote') loadNomineesForVoting();
+  if(tab === 'vote') {
+    checkVotingStatus();
+    loadNomineesForVoting();
+  }
   if(tab === 'admin') loadAdminDashboard();
 }
 
@@ -905,6 +956,34 @@ function deleteNomination(id) {
 }
 
 // ============ VOTING FUNCTIONS ============
+function checkVotingStatus() {
+  const now = new Date();
+  const startTime = votingSchedule.start ? new Date(votingSchedule.start) : null;
+  const endTime = votingSchedule.end ? new Date(votingSchedule.end) : null;
+  
+  const statusTitle = document.getElementById('voting-status-title');
+  const statusMessage = document.getElementById('voting-status-message');
+  const voterInfoCard = document.getElementById('voter-info-card');
+  
+  if (!startTime || !endTime) {
+    statusTitle.innerText = '⚠️ Voting Schedule Not Set';
+    statusMessage.innerText = 'The admin has not set a voting schedule yet. Please check back later.';
+    voterInfoCard.style.display = 'none';
+  } else if (now < startTime) {
+    statusTitle.innerText = '⏳ Voting Has Not Started';
+    statusMessage.innerText = `Voting will open on ${startTime.toLocaleString()}. Please wait until then.`;
+    voterInfoCard.style.display = 'none';
+  } else if (now > endTime) {
+    statusTitle.innerText = '🔒 Voting Has Closed';
+    statusMessage.innerText = `Voting closed on ${endTime.toLocaleString()}. Thank you to everyone who participated!`;
+    voterInfoCard.style.display = 'none';
+  } else {
+    statusTitle.innerText = '✅ Voting is Open!';
+    statusMessage.innerText = `Voting is currently open. It will close on ${endTime.toLocaleString()}.`;
+    voterInfoCard.style.display = 'block';
+  }
+}
+
 function loadNomineesForVoting() {
   const path = 'nominations/' + currentPeriod.replace(' ', '_');
   db.ref(path).on('value', snap => {
@@ -920,6 +999,15 @@ function startVoting() {
   const dept = document.getElementById('voter-dept').value.trim();
   
   if(!name || !dept) return showAlert('Please fill both fields.', 'error');
+  
+  // Double-check voting schedule before allowing start
+  const now = new Date();
+  const startTime = votingSchedule.start ? new Date(votingSchedule.start) : null;
+  const endTime = votingSchedule.end ? new Date(votingSchedule.end) : null;
+  
+  if ((startTime && now < startTime) || (endTime && now > endTime)) {
+    return showAlert('Voting is not currently open.', 'error');
+  }
   
   currentVoter = {name, dept};
   document.getElementById('voter-display').innerText = name + ' (' + dept + ')';
@@ -1029,6 +1117,7 @@ function submitVotes() {
       document.getElementById('voter-name').value = '';
       document.getElementById('voter-dept').value = '';
       voterRatings = {};
+      checkVotingStatus(); // Re-check status after voting
     })
     .catch(err => showAlert('Error: ' + err.message, 'error'));
 }
@@ -1088,22 +1177,18 @@ function confirmReset() {
     const oldPath = currentPeriod.replace(' ', '_');
     const newPath = newPeriod.replace(' ', '_');
     
-    // Archive old data
     db.ref('archive/' + oldPath).set({
       nominations, votes, categories,
       archivedAt: new Date().toISOString(),
       period: currentPeriod
     });
     
-    // Clear current data
     db.ref('nominations/' + oldPath).remove();
     db.ref('votes/' + oldPath).remove();
     
-    // Set new period
     currentPeriod = newPeriod;
     db.ref('settings/currentPeriod').set({month, year});
     
-    // Reset categories for new period
     categories = [
       {id: 1, name: "Host of the Month (FOH)"},
       {id: 2, name: "Host of the Month (HOH)"},
