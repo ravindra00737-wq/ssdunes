@@ -1474,46 +1474,54 @@ function exportData() {
       showAlert('Excel library not loaded. Please check your internet connection.', 'error');
       return;
     }
+    
     const wb = XLSX.utils.book_new();
     
     // Nominations Sheet
-    const nominationsData = nominations.map(n => ({
-      'Nominee Name': n.nomineeName,
-      'Department': n.nomineeDept,
-      'Category': n.category,
-      'Nominated By': n.leaderName,
-      'Nominator Dept': n.leaderDept,
-      'Description': n.description,
+    const nominationsData = (nominations || []).map(n => ({
+      'Nominee Name': n.nomineeName || '',
+      'Department': n.nomineeDept || '',
+      'Category': n.category || '',
+      'Nominated By': n.leaderName || '',
+      'Nominator Dept': n.leaderDept || '',
+      'Description': n.description || '',
       'Photo': n.image ? 'Yes' : 'No',
-      'Timestamp': new Date(n.timestamp).toLocaleString()
+      'Timestamp': n.timestamp ? new Date(n.timestamp).toLocaleString() : ''
     }));
     const nominationsWS = XLSX.utils.json_to_sheet(nominationsData);
     XLSX.utils.book_append_sheet(wb, nominationsWS, 'Nominations');
     
     // Votes Sheet
     const votesData = [];
-    Object.entries(votes).forEach(([voteId, vote]) => {
-      Object.entries(vote.ratings).forEach(([catName, ratings]) => {
-        Object.entries(ratings).forEach(([nomId, rating]) => {
-          const nominee = nominations.find(n => n.id === nomId);
-          votesData.push({
-            'Voter Name': vote.voterName,
-            'Voter Department': vote.voterDept,
-            'Category': catName,
-            'Nominee': nominee ? nominee.nomineeName : 'Unknown',
-            'Rating': rating,
-            'Voted At': new Date(vote.timestamp).toLocaleString()
+    if (votes && typeof votes === 'object') {
+      Object.entries(votes).forEach(([voteId, vote]) => {
+        if (vote && vote.ratings) {
+          Object.entries(vote.ratings).forEach(([catName, ratings]) => {
+            if (ratings && typeof ratings === 'object') {
+              Object.entries(ratings).forEach(([nomId, rating]) => {
+                const nominee = nominations.find(n => n.id === nomId);
+                votesData.push({
+                  'Voter Name': vote.voterName || '',
+                  'Voter Department': vote.voterDept || '',
+                  'Category': catName || '',
+                  'Nominee': nominee ? nominee.nomineeName : 'Unknown',
+                  'Rating': rating || 0,
+                  'Voted At': vote.timestamp ? new Date(vote.timestamp).toLocaleString() : ''
+                });
+              });
+            }
           });
-        });
+        }
       });
-    });
+    }
+    
     if (votesData.length > 0) {
       const votesWS = XLSX.utils.json_to_sheet(votesData);
       XLSX.utils.book_append_sheet(wb, votesWS, 'Votes');
     }
     
     // Categories Sheet
-    if (categories.length > 0) {
+    if (categories && categories.length > 0) {
       const categoriesWS = XLSX.utils.json_to_sheet(categories);
       XLSX.utils.book_append_sheet(wb, categoriesWS, 'Categories');
     }
@@ -1525,6 +1533,101 @@ function exportData() {
   } catch (error) {
     console.error('Export error:', error);
     showAlert('Failed to export data: ' + error.message, 'error');
+  }
+}
+
+function downloadReport() {
+  try {
+    if (typeof XLSX === 'undefined') {
+      showAlert('Excel library not loaded. Please check your internet connection.', 'error');
+      return;
+    }
+    
+    const wb = XLSX.utils.book_new();
+    
+    // Create a sheet for each category
+    if (categories && categories.length > 0) {
+      categories.forEach(cat => {
+        const catNominations = (nominations || []).filter(n => n.category === cat.name);
+        
+        const reportData = catNominations.map(n => {
+          let totalScore = 0;
+          let voteCount = 0;
+          
+          if (votes && typeof votes === 'object') {
+            Object.values(votes).forEach(vote => {
+              if (vote && vote.ratings && vote.ratings[cat.name]) {
+                const rating = vote.ratings[cat.name][n.id];
+                if (rating !== undefined && rating !== null) {
+                  totalScore += parseInt(rating) || 0;
+                  voteCount++;
+                }
+              }
+            });
+          }
+          
+          const average = voteCount > 0 ? (totalScore / voteCount).toFixed(2) : 0;
+          
+          return {
+            'Rank': 0, // Will be updated after sort
+            'Nominee Name': n.nomineeName || '',
+            'Department': n.nomineeDept || '',
+            'Nominated By': n.leaderName || '',
+            'Description': n.description || '',
+            'Has Photo': n.image ? 'Yes' : 'No',
+            'Total Score': totalScore,
+            'Average Rating': average,
+            'Number of Votes': voteCount
+          };
+        });
+        
+        // Sort by total score (descending)
+        reportData.sort((a, b) => b['Total Score'] - a['Total Score']);
+        
+        // Add ranking
+        reportData.forEach((row, index) => {
+          row.Rank = index + 1;
+        });
+        
+        const ws = XLSX.utils.json_to_sheet(reportData);
+        // Excel sheet names cannot exceed 31 characters and cannot contain certain characters
+        const sheetName = (cat.name || 'Category').substring(0, 31).replace(/[\\/\?\*\[\]]/g, '');
+        XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Category');
+      });
+    }
+    
+    // Summary Sheet
+    const summaryData = (categories || []).map(cat => {
+      const catNoms = (nominations || []).filter(n => n.category === cat.name);
+      let totalVotes = 0;
+      
+      if (votes && typeof votes === 'object') {
+        catNoms.forEach(n => {
+          Object.values(votes).forEach(v => {
+            if (v && v.ratings && v.ratings[cat.name] && v.ratings[cat.name][n.id]) {
+              totalVotes++;
+            }
+          });
+        });
+      }
+      
+      return {
+        'Category': cat.name || '',
+        'Total Nominations': catNoms.length,
+        'Total Votes': totalVotes
+      };
+    });
+    
+    const summaryWS = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, summaryWS, 'Summary');
+    
+    // Download
+    const fileName = `VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showAlert('Report downloaded successfully!', 'success');
+  } catch (error) {
+    console.error('Report download error:', error);
+    showAlert('Failed to download report: ' + error.message, 'error');
   }
 }
 
