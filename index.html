@@ -1110,7 +1110,8 @@ function renderAdminNominations() {
               </div>
             `;
         } else {
-            bonusHtml = `<small style="color:#999; margin-top:8px; display:block; font-style:italic;">(Bonus managed on primary profile)</small>`;
+            // Hide completely for subsequent duplicate profiles
+            bonusHtml = '';
         }
     }
     
