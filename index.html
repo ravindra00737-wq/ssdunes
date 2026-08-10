@@ -443,6 +443,22 @@ textarea{resize:vertical;min-height:100px;}
       </div>
 
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+        <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Voting Schedule Control</h3>
+        <div class="settings-grid">
+          <div class="form-group">
+            <label>Voting Start Date & Time</label>
+            <input type="datetime-local" id="voting-start-time">
+          </div>
+          <div class="form-group">
+            <label>Voting End Date & Time</label>
+            <input type="datetime-local" id="voting-end-time">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveVotingSchedule()" style="margin-top:10px;">💾 Save Voting Schedule</button>
+        <p style="margin-top:10px;color:#666;font-size:0.9rem;">Note: Users will only be able to cast votes within this time window. If no schedule is set, voting will be disabled.</p>
+      </div>
+
+      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
         <h3 style="color:var(--brand);margin-bottom:15px;"> Category Management (Month-Wise)</h3>
         <div style="display:flex;gap:10px;margin-bottom:15px;">
           <input type="text" id="new-category" placeholder="New category name" style="flex:1;">
@@ -1066,44 +1082,91 @@ function renderAdminNominations() {
     return;
   }
   
-  container.innerHTML = filteredNominations.map(n => `
+  // Count nominations per nominee name to detect duplicates
+  const nomineeCounts = {};
+  nominations.forEach(n => {
+    const key = n.nomineeName.toLowerCase().trim();
+    nomineeCounts[key] = (nomineeCounts[key] || 0) + 1;
+  });
+  
+  container.innerHTML = filteredNominations.map(n => {
+    const isDuplicate = nomineeCounts[n.nomineeName.toLowerCase().trim()] > 1;
+    const currentBonus = n.adminBonus || 0;
+    
+    return `
     <div style="display:flex;gap:12px;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);">
-      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;"></div>'}
+      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;">👤</div>'}
       <div style="flex:1;">
         <strong style="color:var(--brand);">${n.nomineeName}</strong>
         <small style="color:#666;display:block;">${n.nomineeDept} • ${n.category}</small>
         <small style="color:#888;display:block;">By: ${n.leaderName} (${n.leaderDept})</small>
         <small style="font-style:italic;color:#555;display:block;">"${n.description.substring(0, 60)}${n.description.length > 60 ? '...' : ''}"</small>
+        
+        ${isDuplicate ? `
+          <div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#fff; padding:8px; border-radius:6px; border:1px solid var(--border);">
+            <label style="font-size:0.85rem; font-weight:bold; color:var(--brand); margin:0; white-space:nowrap;">⭐ Admin Bonus:</label>
+            <input type="number" min="0" value="${currentBonus}" 
+                   onchange="updateAdminBonus('${n.id}', this.value)" 
+                   style="width:70px; padding:6px; border:2px solid var(--brand-light); border-radius:4px; text-align:center; font-weight:bold;">
+            <small style="color:#888; margin:0; font-size:0.75rem;">(Multiple nominations detected)</small>
+          </div>
+        ` : ''}
       </div>
       <div style="display:flex;gap:5px;flex-direction:column;">
         <button class="btn btn-warning btn-sm" onclick="editNomination('${n.id}')">✏️ Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteNomination('${n.id}')">🗑️ Delete</button>
       </div>
     </div>
-  `).join('');
+  `}).join('');
+}
+
+function updateAdminBonus(nomId, value) {
+  const bonus = parseInt(value) || 0;
+  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + nomId + '/adminBonus';
+  db.ref(path).set(bonus).then(() => {
+    showAlert('Admin bonus updated!', 'success');
+    const nom = nominations.find(n => n.id === nomId);
+    if(nom) nom.adminBonus = bonus;
+    
+    // Re-render results if the admin is viewing them
+    const activeTab = document.querySelector('#admin-cat-tabs .cat-tab.active');
+    if(activeTab) {
+      showAdminCategory(activeTab.textContent, activeTab);
+    }
+  }).catch(err => showAlert('Error updating bonus: ' + err.message, 'error'));
+}
+
+function renderAdminResults() {
+  document.getElementById('admin-cat-tabs').innerHTML = categories.map((c, i) => 
+    `<button class="cat-tab ${i === 0 ? 'active' : ''}" onclick="showAdminCategory('${c.name}', this)">${c.name}</button>`
+  ).join('');
+  
+  if(categories.length > 0) {
+    showAdminCategory(categories[0].name, document.querySelector('#admin-cat-tabs .cat-tab'));
+  }
 }
 
 function showAdminCategory(catName, btn) {
   document.querySelectorAll('#admin-cat-tabs .cat-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
   
   const noms = nominations.filter(n => n.category === catName);
   
   let results = noms.map(n => {
     let totalScore = 0;
     let voteCount = 0;
-    let totalBonus = 0;
+    let totalBonus = parseInt(n.adminBonus) || 0; // Include Admin Bonus
     
     Object.values(votes).forEach(v => {
       const rating = v.ratings && v.ratings[catName] ? v.ratings[catName][n.id] : null;
-      const bonus = v.bonuses && v.bonuses[catName] ? v.bonuses[catName][n.id] : 0;
+      const voteBonus = v.bonuses && v.bonuses[catName] ? v.bonuses[catName][n.id] : 0;
       
       if(rating) { 
         totalScore += parseInt(rating); 
         voteCount++; 
       }
-      if(bonus) {
-        totalBonus += parseInt(bonus);
+      if(voteBonus) {
+        totalBonus += parseInt(voteBonus);
       }
     });
     
@@ -1547,27 +1610,6 @@ function showCategory(catName, btn) {
 }
 
 function updateProgress() {
-  const total = nominations.length;
-  let done = 0;
-  
-  // Only count unique nominees for progress
-  categories.forEach(c => {
-    const noms = nominations.filter(n => n.category === c.name);
-    const uniqueNominees = new Set();
-    noms.forEach(n => uniqueNominees.add(n.nomineeName.toLowerCase().trim()));
-    
-    uniqueNominees.forEach(nomName => {
-      if(voterRatings[c.name] && voterRatings[c.name][Object.keys(voterRatings[c.name]).find(key => {
-        // Find the nomination ID for this normalized name
-        const nom = nominations.find(n => n.id === key && n.nomineeName.toLowerCase().trim() === nomName);
-        return nom !== undefined;
-      })]) {
-        done++;
-      }
-    });
-  });
-  
-  // Simpler progress calculation: count how many unique nominees have a rating
   let uniqueRated = 0;
   const allUniqueNominees = new Set();
   categories.forEach(c => {
@@ -1595,7 +1637,6 @@ function submitVotes() {
   let missing = 0;
   categories.forEach(c => {
     const noms = nominations.filter(n => n.category === c.name);
-    // Only check the FIRST nomination of each unique nominee name for missing ratings
     const uniqueNominees = new Map();
     noms.forEach(n => {
       const normalizedName = n.nomineeName.toLowerCase().trim();
@@ -1649,6 +1690,7 @@ function exportData() {
       'Nominated By': n.leaderName || '',
       'Nominator Dept': n.leaderDept || '',
       'Description': n.description || '',
+      'Admin Bonus': n.adminBonus || 0,
       'Photo': n.image ? 'Yes' : 'No',
       'Timestamp': n.timestamp ? new Date(n.timestamp).toLocaleString() : ''
     }));
@@ -1716,7 +1758,7 @@ function downloadReport() {
         const reportData = catNominations.map(n => {
           let totalScore = 0;
           let voteCount = 0;
-          let totalBonus = 0;
+          let totalBonus = parseInt(n.adminBonus) || 0; // Include Admin Bonus
           
           if (votes && typeof votes === 'object') {
             Object.values(votes).forEach(vote => {
@@ -1828,7 +1870,7 @@ async function downloadPDFReport() {
       const reportData = catNominations.map(n => {
         let totalScore = 0;
         let voteCount = 0;
-        let totalBonus = 0;
+        let totalBonus = parseInt(n.adminBonus) || 0; // Include Admin Bonus
         
         if (votes && typeof votes === 'object') {
           Object.values(votes).forEach(vote => {
