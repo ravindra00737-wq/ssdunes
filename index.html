@@ -1375,4 +1375,356 @@ function renderVotingInterface() {
     const noms = nominations.filter(n => n.category === c.name);
     if(noms.length === 0) return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}"><p style="text-align:center;padding:30px;color:#888;">No nominations yet.</p></div>`;
     
-    return `<div class="cat-panel" data-cat="${c.name}" style="display
+    return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}">
+      <div class="nominee-grid">
+        ${noms.map(n => `
+          <div class="nominee-card">
+            <div class="nominee-header">
+              <div class="nominee-img">${n.image ? `<img src="${n.image}">` : '👤'}</div>
+              <h3>${n.nomineeName}</h3>
+            </div>
+            <div class="nominee-body">
+              <div class="nominee-meta">
+                <div><strong>Department:</strong> ${n.nomineeDept}</div>
+                <div><strong>Category:</strong> ${n.category}</div>
+                <div><strong>Nominated by:</strong> ${n.leaderName}</div>
+              </div>
+              <p class="nominee-desc">${n.description}</p>
+              <div class="rating-input">
+                <label>Your Rating (1-10):</label>
+                <input type="number" min="1" max="10" class="rate-input" data-cat="${c.name}" data-nom="${n.id}" placeholder="—">
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  
+  document.querySelectorAll('.rate-input').forEach(inp => {
+    inp.oninput = function() {
+      const catName = this.dataset.cat;
+      const nomId = this.dataset.nom;
+      const val = parseInt(this.value);
+      
+      if(this.value === '' || (!isNaN(val) && val >= 1 && val <= 10)) {
+        this.style.borderColor = 'var(--border)';
+        if(this.value === '') delete voterRatings[catName][nomId];
+        else voterRatings[catName][nomId] = val;
+        updateProgress();
+      } else {
+        this.style.borderColor = '#c0392b';
+      }
+    };
+  });
+  
+  updateProgress();
+}
+
+function showCategory(catName, btn) {
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.cat-panel').forEach(p => p.style.display = p.dataset.cat === catName ? 'block' : 'none');
+}
+
+function updateProgress() {
+  const total = nominations.length;
+  let done = 0;
+  Object.values(voterRatings).forEach(catRatings => done += Object.keys(catRatings).length);
+  document.getElementById('progress-text').innerText = done + ' of ' + total + ' rated';
+  document.getElementById('progress-fill').style.width = (total ? (done / total * 100) : 0) + '%';
+}
+
+function submitVotes() {
+  let missing = 0;
+  categories.forEach(c => {
+    const noms = nominations.filter(n => n.category === c.name);
+    noms.forEach(n => {
+      if(!voterRatings[c.name] || !voterRatings[c.name][n.id]) missing++;
+    });
+  });
+  
+  if(missing > 0) return showAlert('Please rate all nominees. ' + missing + ' missing.', 'error');
+  
+  const voteData = {
+    voterName: currentVoter.name,
+    voterDept: currentVoter.dept,
+    timestamp: new Date().toISOString(),
+    ratings: voterRatings
+  };
+  
+  const path = 'votes/' + currentPeriod.replace(' ', '_') + '/' + Date.now();
+  db.ref(path).set(voteData)
+    .then(() => {
+      showAlert('Votes submitted successfully!', 'success');
+      document.getElementById('voting-interface').style.display = 'none';
+      document.getElementById('voter-info-card').style.display = 'block';
+      document.getElementById('voter-name').value = '';
+      document.getElementById('voter-dept').value = '';
+      voterRatings = {};
+      checkVotingStatus();
+    })
+    .catch(err => showAlert('Error: ' + err.message, 'error'));
+}
+
+// ============ DATA MANAGEMENT - EXCEL EXPORT ============
+function exportData() {
+  try {
+    if (typeof XLSX === 'undefined') {
+      showAlert('Excel library not loaded. Please check your internet connection.', 'error');
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    
+    // Nominations Sheet
+    const nominationsData = nominations.map(n => ({
+      'Nominee Name': n.nomineeName,
+      'Department': n.nomineeDept,
+      'Category': n.category,
+      'Nominated By': n.leaderName,
+      'Nominator Dept': n.leaderDept,
+      'Description': n.description,
+      'Photo': n.image ? 'Yes' : 'No',
+      'Timestamp': new Date(n.timestamp).toLocaleString()
+    }));
+    const nominationsWS = XLSX.utils.json_to_sheet(nominationsData);
+    XLSX.utils.book_append_sheet(wb, nominationsWS, 'Nominations');
+    
+    // Votes Sheet
+    const votesData = [];
+    Object.entries(votes).forEach(([voteId, vote]) => {
+      Object.entries(vote.ratings).forEach(([catName, ratings]) => {
+        Object.entries(ratings).forEach(([nomId, rating]) => {
+          const nominee = nominations.find(n => n.id === nomId);
+          votesData.push({
+            'Voter Name': vote.voterName,
+            'Voter Department': vote.voterDept,
+            'Category': catName,
+            'Nominee': nominee ? nominee.nomineeName : 'Unknown',
+            'Rating': rating,
+            'Voted At': new Date(vote.timestamp).toLocaleString()
+          });
+        });
+      });
+    });
+    if (votesData.length > 0) {
+      const votesWS = XLSX.utils.json_to_sheet(votesData);
+      XLSX.utils.book_append_sheet(wb, votesWS, 'Votes');
+    }
+    
+    // Categories Sheet
+    if (categories.length > 0) {
+      const categoriesWS = XLSX.utils.json_to_sheet(categories);
+      XLSX.utils.book_append_sheet(wb, categoriesWS, 'Categories');
+    }
+    
+    // Download
+    const fileName = `VotingData_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showAlert('Data exported to Excel successfully!', 'success');
+  } catch (error) {
+    console.error('Export error:', error);
+    showAlert('Failed to export data: ' + error.message, 'error');
+  }
+}
+
+function downloadReport() {
+  try {
+    if (typeof XLSX === 'undefined') {
+      showAlert('Excel library not loaded. Please check your internet connection.', 'error');
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    
+    // Create a sheet for each category
+    categories.forEach(cat => {
+      const catNominations = nominations.filter(n => n.category === cat.name);
+      
+      const reportData = catNominations.map(n => {
+        let totalScore = 0;
+        let voteCount = 0;
+        
+        Object.values(votes).forEach(vote => {
+          const rating = vote.ratings[cat.name]?.[n.id];
+          if(rating !== undefined) {
+            totalScore += parseInt(rating);
+            voteCount++;
+          }
+        });
+        
+        const average = voteCount > 0 ? (totalScore / voteCount).toFixed(2) : 0;
+        
+        return {
+          'Rank': 0, // Will be updated after sort
+          'Nominee Name': n.nomineeName,
+          'Department': n.nomineeDept,
+          'Nominated By': n.leaderName,
+          'Description': n.description,
+          'Has Photo': n.image ? 'Yes' : 'No',
+          'Total Score': totalScore,
+          'Average Rating': average,
+          'Number of Votes': voteCount
+        };
+      });
+      
+      // Sort by total score (descending)
+      reportData.sort((a, b) => b['Total Score'] - a['Total Score']);
+      
+      // Add ranking
+      reportData.forEach((row, index) => {
+        row.Rank = index + 1;
+      });
+      
+      const ws = XLSX.utils.json_to_sheet(reportData);
+      // Excel sheet names cannot exceed 31 characters and cannot contain certain characters
+      const sheetName = cat.name.substring(0, 31).replace(/[\\/\?\*\[\]]/g, '') || 'Category';
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+    
+    // Summary Sheet
+    const summaryData = categories.map(cat => {
+      const catNoms = nominations.filter(n => n.category === cat.name);
+      let totalVotes = 0;
+      catNoms.forEach(n => {
+        Object.values(votes).forEach(v => {
+          if(v.ratings[cat.name]?.[n.id]) totalVotes++;
+        });
+      });
+      return {
+        'Category': cat.name,
+        'Total Nominations': catNoms.length,
+        'Total Votes': totalVotes
+      };
+    });
+    
+    const summaryWS = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, summaryWS, 'Summary');
+    
+    // Download
+    const fileName = `VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showAlert('Report downloaded successfully!', 'success');
+  } catch (error) {
+    console.error('Report download error:', error);
+    showAlert('Failed to download report: ' + error.message, 'error');
+  }
+}
+
+function showResetModal() {
+  document.getElementById('reset-modal').classList.add('active');
+}
+
+function closeResetModal() {
+  document.getElementById('reset-modal').classList.remove('active');
+}
+
+function confirmReset() {
+  const month = document.getElementById('reset-month').value;
+  const year = document.getElementById('reset-year').value;
+  const newPeriod = `${month} ${year}`;
+  
+  if(confirm(`This will archive data for "${currentPeriod}" and reset for "${newPeriod}". Continue?`)) {
+    const oldPath = currentPeriod.replace(' ', '_');
+    const newPath = newPeriod.replace(' ', '_');
+    
+    db.ref('archive/' + oldPath).set({
+      nominations, votes, categories,
+      archivedAt: new Date().toISOString(),
+      period: currentPeriod
+    });
+    
+    db.ref('nominations/' + oldPath).remove();
+    db.ref('votes/' + oldPath).remove();
+    
+    currentPeriod = newPeriod;
+    db.ref('settings/currentPeriod').set({month, year});
+    
+    categories = [
+      {id: 1, name: "Host of the Month (FOH)"},
+      {id: 2, name: "Host of the Month (HOH)"},
+      {id: 3, name: "Leader of the Quarter"},
+      {id: 4, name: "Sustainability Hero of the Month"}
+    ];
+    const catObj = {};
+    categories.forEach(c => catObj[c.id] = c);
+    db.ref('categories/' + newPath).set(catObj);
+    
+    closeResetModal();
+    showAlert('Data archived and reset for ' + newPeriod, 'success');
+    loadAdminDashboard();
+  }
+}
+
+function resetAllData() {
+  if(!confirm('⚠️ WARNING: This will permanently delete ALL data. Continue?')) return;
+  if(!confirm('Are you absolutely sure? This cannot be undone!')) return;
+  
+  db.ref('nominations').remove();
+  db.ref('votes').remove();
+  db.ref('categories').remove();
+  showAlert('All data deleted.', 'success');
+}
+
+// ============ IMAGE UPLOAD ============
+const picDrop = document.getElementById('pic-drop');
+const picFile = document.getElementById('pic-file');
+const picPreview = document.getElementById('pic-preview');
+
+picDrop.onclick = () => picFile.click();
+picDrop.ondragover = e => { e.preventDefault(); picDrop.classList.add('dragover'); };
+picDrop.ondragleave = () => picDrop.classList.remove('dragover');
+picDrop.ondrop = e => { e.preventDefault(); picDrop.classList.remove('dragover'); if(e.dataTransfer.files[0]) handlePicFile(e.dataTransfer.files[0]); };
+picFile.onchange = e => { if(e.target.files[0]) handlePicFile(e.target.files[0]); };
+
+function handlePicFile(f) {
+  if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+  const r = new FileReader();
+  r.onload = ev => { picPreview.src = ev.target.result; picPreview.style.display = 'block'; tempPic = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+const logoDrop = document.getElementById('logo-drop');
+const logoFile = document.getElementById('logo-file');
+const logoPreview = document.getElementById('logo-preview');
+
+logoDrop.onclick = () => logoFile.click();
+logoFile.onchange = e => { if(e.target.files[0]) handleLogoFile(e.target.files[0]); };
+
+function handleLogoFile(f) {
+  if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+  const r = new FileReader();
+  r.onload = ev => { logoPreview.src = ev.target.result; logoPreview.style.display = 'block'; tempLogo = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+const bgDrop = document.getElementById('bg-drop');
+const bgFile = document.getElementById('bg-file');
+const bgPreview = document.getElementById('bg-preview');
+
+bgDrop.onclick = () => bgFile.click();
+bgFile.onchange = e => { if(e.target.files[0]) handleBgFile(e.target.files[0]); };
+
+function handleBgFile(f) {
+  if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+  const r = new FileReader();
+  r.onload = ev => { bgPreview.src = ev.target.result; bgPreview.style.display = 'block'; tempBg = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+// ============ UTILITIES ============
+function showAlert(msg, type) {
+  const el = document.getElementById('alert-' + type);
+  el.innerText = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+function loadNominations() {
+  const path = 'nominations/' + currentPeriod.replace(' ', '_');
+  db.ref(path).on('value', snap => {
+    nominations = snap.val() ? Object.values(snap.val()) : [];
+  });
+}
+</script>
+</body>
+</html>
