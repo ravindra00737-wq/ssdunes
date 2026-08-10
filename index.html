@@ -1089,9 +1089,30 @@ function renderAdminNominations() {
     nomineeCounts[key] = (nomineeCounts[key] || 0) + 1;
   });
   
+  const bonusNominees = new Set();
+  
   container.innerHTML = filteredNominations.map(n => {
-    const isDuplicate = nomineeCounts[n.nomineeName.toLowerCase().trim()] > 1;
+    const normalizedName = n.nomineeName.toLowerCase().trim();
+    const isDuplicate = nomineeCounts[normalizedName] > 1;
     const currentBonus = n.adminBonus || 0;
+    
+    let bonusHtml = '';
+    if (isDuplicate) {
+        if (!bonusNominees.has(normalizedName)) {
+            bonusNominees.add(normalizedName);
+            bonusHtml = `
+              <div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#fff; padding:8px; border-radius:6px; border:1px solid var(--border);">
+                <label style="font-size:0.85rem; font-weight:bold; color:var(--brand); margin:0; white-space:nowrap;">⭐ Admin Bonus:</label>
+                <input type="number" min="0" value="${currentBonus}" 
+                       onchange="updateAdminBonus('${n.id}', this.value, '${normalizedName}')" 
+                       style="width:70px; padding:6px; border:2px solid var(--brand-light); border-radius:4px; text-align:center; font-weight:bold;">
+                <small style="color:#888; margin:0; font-size:0.75rem;">(Applied to all profiles)</small>
+              </div>
+            `;
+        } else {
+            bonusHtml = `<small style="color:#999; margin-top:8px; display:block; font-style:italic;">(Bonus managed on primary profile)</small>`;
+        }
+    }
     
     return `
     <div style="display:flex;gap:12px;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);">
@@ -1102,15 +1123,7 @@ function renderAdminNominations() {
         <small style="color:#888;display:block;">By: ${n.leaderName} (${n.leaderDept})</small>
         <small style="font-style:italic;color:#555;display:block;">"${n.description.substring(0, 60)}${n.description.length > 60 ? '...' : ''}"</small>
         
-        ${isDuplicate ? `
-          <div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#fff; padding:8px; border-radius:6px; border:1px solid var(--border);">
-            <label style="font-size:0.85rem; font-weight:bold; color:var(--brand); margin:0; white-space:nowrap;">⭐ Admin Bonus:</label>
-            <input type="number" min="0" value="${currentBonus}" 
-                   onchange="updateAdminBonus('${n.id}', this.value)" 
-                   style="width:70px; padding:6px; border:2px solid var(--brand-light); border-radius:4px; text-align:center; font-weight:bold;">
-            <small style="color:#888; margin:0; font-size:0.75rem;">(Multiple nominations detected)</small>
-          </div>
-        ` : ''}
+        ${bonusHtml}
       </div>
       <div style="display:flex;gap:5px;flex-direction:column;">
         <button class="btn btn-warning btn-sm" onclick="editNomination('${n.id}')">✏️ Edit</button>
@@ -1120,13 +1133,25 @@ function renderAdminNominations() {
   `}).join('');
 }
 
-function updateAdminBonus(nomId, value) {
+function updateAdminBonus(nomId, value, normalizedName) {
   const bonus = parseInt(value) || 0;
-  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + nomId + '/adminBonus';
-  db.ref(path).set(bonus).then(() => {
-    showAlert('Admin bonus updated!', 'success');
-    const nom = nominations.find(n => n.id === nomId);
-    if(nom) nom.adminBonus = bonus;
+  
+  // Find all nominations for this person to apply bonus consistently across duplicates
+  const relatedNoms = nominations.filter(n => n.nomineeName.toLowerCase().trim() === normalizedName);
+  
+  const updates = {};
+  relatedNoms.forEach(n => {
+    updates[n.id + '/adminBonus'] = bonus;
+  });
+  
+  const basePath = 'nominations/' + currentPeriod.replace(' ', '_');
+  
+  db.ref(basePath).update(updates).then(() => {
+    showAlert('Admin bonus updated for all profiles of this nominee!', 'success');
+    relatedNoms.forEach(n => n.adminBonus = bonus);
+    
+    // Re-render admin nominations
+    renderAdminNominations();
     
     // Re-render results if the admin is viewing them
     const activeTab = document.querySelector('#admin-cat-tabs .cat-tab.active');
