@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Employee of the Month - Voting System</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
@@ -116,6 +118,13 @@ textarea{resize:vertical;min-height:100px;}
 .vote-rating-row{display:flex;justify-content:space-between;align-items:center;padding:8px;background:#fff;border-radius:6px;margin-bottom:5px;}
 .vote-rating-row input{width:80px;padding:6px;text-align:center;border:2px solid var(--border);border-radius:6px;}
 
+.nomination-step{display:none;}
+.nomination-step.active{display:block;}
+
+.leader-history-item{background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);}
+.leader-history-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.leader-history-item-actions{display:flex;gap:5px;}
+
 @media(max-width:768px){
   .header-content{flex-direction:column;text-align:center;}
   .hotel-logo{width:80px;height:80px;font-size:2rem;}
@@ -143,7 +152,7 @@ textarea{resize:vertical;min-height:100px;}
   <div class="nav-content">
     <button class="nav-btn active" onclick="switchTab('nominate', this)"> Submit Nomination</button>
     <button class="nav-btn" onclick="switchTab('vote', this)">🗳️ Cast Vote</button>
-    <button class="nav-btn" onclick="showAdminLogin()" style="margin-left:auto;">⚙️ Admin Portal</button>
+    <button class="nav-btn" onclick="showAdminLogin()" style="margin-left:auto;">️ Admin Portal</button>
   </div>
 </div>
 
@@ -157,44 +166,17 @@ textarea{resize:vertical;min-height:100px;}
       <h2 id="nominationTitle"> Submit a Nomination</h2>
       <p id="nominationSubtitle" class="subtitle">Leaders: Recognize outstanding team members by nominating them for awards.</p>
       
-      <div class="form-group">
-        <label>Your Name (Leader/Nominator) *</label>
-        <input type="text" id="nom-leader-name" placeholder="Enter your full name">
-      </div>
-      
-      <div class="form-group">
-        <label>Your Department *</label>
-        <select id="nom-leader-dept" required>
-          <option value="">Select Department</option>
-          <option value="Executive Office">Executive Office</option>
-          <option value="Human Resources">Human Resources</option>
-          <option value="Front Office">Front Office</option>
-          <option value="F&B Service">F&B Service</option>
-          <option value="Kitchen">Kitchen</option>
-          <option value="Kitchen Stewarding">Kitchen Stewarding</option>
-          <option value="Housekeeping & Laundry">Housekeeping & Laundry</option>
-          <option value="Security">Security</option>
-          <option value="Spa">Spa</option>
-          <option value="Sales & Marketing">Sales & Marketing</option>
-          <option value="Engineering & Landscaping">Engineering & Landscaping</option>
-          <option value="Landscaping">Landscaping</option>
-          <option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option>
-          <option value="Sustainability">Sustainability</option>
-          <option value="Reservations">Reservations</option>
-        </select>
-      </div>
-      
-      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">Nominee Information</h3>
-        
+      <!-- Step 1: Leader Details -->
+      <div id="nomination-step-1" class="nomination-step active">
+        <h3 style="color:var(--brand);margin-bottom:15px;">Step 1: Your Information</h3>
         <div class="form-group">
-          <label>Nominee Full Name *</label>
-          <input type="text" id="nom-name" placeholder="Enter nominee's full name">
+          <label>Your Name (Leader/Nominator) *</label>
+          <input type="text" id="nom-leader-name" placeholder="Enter your full name">
         </div>
         
         <div class="form-group">
-          <label>Nominee Department *</label>
-          <select id="nom-dept" required>
+          <label>Your Department *</label>
+          <select id="nom-leader-dept" required>
             <option value="">Select Department</option>
             <option value="Executive Office">Executive Office</option>
             <option value="Human Resources">Human Resources</option>
@@ -214,36 +196,77 @@ textarea{resize:vertical;min-height:100px;}
           </select>
         </div>
         
-        <div class="form-group">
-          <label>Award Category *</label>
-          <select id="nom-category">
-            <option value="">-- Select Award Category --</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Reason for Nomination *</label>
-          <textarea id="nom-desc" placeholder="Describe why this person deserves this award. Include specific achievements, contributions, and examples."></textarea>
-        </div>
-        
-        <div class="form-group">
-          <label>Profile Picture (Optional)</label>
-          <div class="file-upload" id="pic-drop">
-            <p style="font-size:2.5rem;">📷</p>
-            <p>Click or drag photo here</p>
-            <input type="file" id="pic-file" accept="image/*">
+        <button class="btn btn-primary btn-full" onclick="submitLeaderDetails()">Continue to Nominee Details →</button>
+      </div>
+      
+      <!-- Step 2: Nominee Details -->
+      <div id="nomination-step-2" class="nomination-step">
+        <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+          <h3 style="color:var(--brand);margin-bottom:15px;">Step 2: Nominee Information</h3>
+          
+          <div class="form-group">
+            <label>Nominee Full Name *</label>
+            <input type="text" id="nom-name" placeholder="Enter nominee's full name">
           </div>
-          <img id="pic-preview" style="max-width:200px;margin-top:10px;border-radius:8px;display:none;">
+          
+          <div class="form-group">
+            <label>Nominee Department *</label>
+            <select id="nom-dept" required>
+              <option value="">Select Department</option>
+              <option value="Executive Office">Executive Office</option>
+              <option value="Human Resources">Human Resources</option>
+              <option value="Front Office">Front Office</option>
+              <option value="F&B Service">F&B Service</option>
+              <option value="Kitchen">Kitchen</option>
+              <option value="Kitchen Stewarding">Kitchen Stewarding</option>
+              <option value="Housekeeping & Laundry">Housekeeping & Laundry</option>
+              <option value="Security">Security</option>
+              <option value="Spa">Spa</option>
+              <option value="Sales & Marketing">Sales & Marketing</option>
+              <option value="Engineering & Landscaping">Engineering & Landscaping</option>
+              <option value="Landscaping">Landscaping</option>
+              <option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option>
+              <option value="Sustainability">Sustainability</option>
+              <option value="Reservations">Reservations</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Award Category *</label>
+            <select id="nom-category">
+              <option value="">-- Select Award Category --</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Reason for Nomination *</label>
+            <textarea id="nom-desc" placeholder="Describe why this person deserves this award. Include specific achievements, contributions, and examples."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>Profile Picture (Optional)</label>
+            <div class="file-upload" id="pic-drop">
+              <p style="font-size:2.5rem;">📷</p>
+              <p>Click or drag photo here</p>
+              <input type="file" id="pic-file" accept="image/*">
+            </div>
+            <img id="pic-preview" style="max-width:200px;margin-top:10px;border-radius:8px;display:none;">
+          </div>
+          
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline" onclick="backToStep1()" style="flex:1;">← Back</button>
+            <button class="btn btn-primary" onclick="submitNomination()" style="flex:2;">✅ Submit Nomination</button>
+          </div>
         </div>
-        
-        <button class="btn btn-primary btn-full" onclick="submitNomination()">✅ Submit Nomination</button>
       </div>
     </div>
 
-    <div class="card" id="my-nominations-card" style="display:none;">
-      <h2>📋 My Nominations</h2>
-      <p class="subtitle">Manage your submitted nominations. You can delete nominations before voting starts.</p>
-      <div id="my-nominations-list"></div>
+    <!-- Leader's Previous Nominations -->
+    <div class="card" id="leader-history-card" style="display:none;">
+      <h2>📋 My Previous Nominations</h2>
+      <p class="subtitle">View, edit, or manage your submitted nominations.</p>
+      <div id="leader-history-list"></div>
+      <button class="btn btn-primary btn-full" onclick="addNewNomination()" style="margin-top:15px;">➕ Add New Nomination</button>
     </div>
   </div>
 
@@ -347,7 +370,7 @@ textarea{resize:vertical;min-height:100px;}
       </div>
 
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Vote Management</h3>
+        <h3 style="color:var(--brand);margin-bottom:15px;">️ Vote Management</h3>
         <p style="color:#666;margin-bottom:15px;">View, edit, or delete individual votes. Click "View Details" to see and modify ratings.</p>
         <div id="admin-votes-list"></div>
       </div>
@@ -357,6 +380,7 @@ textarea{resize:vertical;min-height:100px;}
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-outline" onclick="exportData()"> Export All Data (Excel)</button>
           <button class="btn btn-outline" onclick="downloadReport()"> Download Report (Excel)</button>
+          <button class="btn btn-outline" onclick="downloadPDFReport()">📄 Download Report (PDF)</button>
           <button class="btn btn-danger" onclick="showResetModal()"> Reset for New Month</button>
           <button class="btn btn-danger" onclick="resetAllData()">⚠️ Delete All Data</button>
         </div>
@@ -738,8 +762,12 @@ function loadCategoriesForPeriod() {
     }
     
     const catSelect = document.getElementById('nom-category');
-    catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
+    const editCatSelect = document.getElementById('edit-nom-category');
+    const catOptions = '<option value="">-- Select Award Category --</option>' + 
       categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    
+    catSelect.innerHTML = catOptions;
+    if(editCatSelect) editCatSelect.innerHTML = catOptions;
       
     if(document.getElementById('tab-admin').classList.contains('active')) {
       renderCategoryList();
@@ -888,7 +916,7 @@ function switchTab(tab, btn) {
   if(btn) btn.classList.add('active');
   
   if(tab === 'nominate') {
-    loadMyNominations();
+    resetNominationForm();
     loadCategoriesForPeriod();
   }
   if(tab === 'vote') {
@@ -896,6 +924,96 @@ function switchTab(tab, btn) {
     loadNomineesForVoting();
   }
   if(tab === 'admin') loadAdminDashboard();
+}
+
+// ============ NOMINATION STEP FUNCTIONS ============
+function submitLeaderDetails() {
+  const leaderName = document.getElementById('nom-leader-name').value.trim();
+  const leaderDept = document.getElementById('nom-leader-dept').value.trim();
+  
+  if(!leaderName || !leaderDept) {
+    return showAlert('Please fill in your name and department.', 'error');
+  }
+  
+  currentLeader = {name: leaderName, dept: leaderDept};
+  
+  // Show step 2 and hide step 1
+  document.getElementById('nomination-step-1').classList.remove('active');
+  document.getElementById('nomination-step-2').classList.add('active');
+  
+  // Load leader's previous nominations
+  loadLeaderHistory();
+}
+
+function backToStep1() {
+  document.getElementById('nomination-step-2').classList.remove('active');
+  document.getElementById('nomination-step-1').classList.add('active');
+  // Clear nominee fields
+  ['nom-name', 'nom-dept', 'nom-category', 'nom-desc'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('pic-preview').style.display = 'none';
+  tempPic = '';
+}
+
+function loadLeaderHistory() {
+  if(!currentLeader.name) return;
+  
+  const path = 'nominations/' + currentPeriod.replace(' ', '_');
+  db.ref(path).orderByChild('leaderName').equalTo(currentLeader.name).once('value', snap => {
+    const myNoms = [];
+    snap.forEach(child => myNoms.push({id: child.key, ...child.val()}));
+    
+    if(myNoms.length === 0) {
+      document.getElementById('leader-history-card').style.display = 'none';
+      return;
+    }
+    
+    document.getElementById('leader-history-card').style.display = 'block';
+    document.getElementById('leader-history-list').innerHTML = myNoms.map(n => `
+      <div class="leader-history-item">
+        <div class="leader-history-item-header">
+          <div>
+            <strong>${n.nomineeName}</strong> - ${n.category}
+            <small style="color:#666;display:block;">${n.description.substring(0, 50)}...</small>
+          </div>
+          <div class="leader-history-item-actions">
+            <button class="btn btn-warning btn-sm" onclick="editLeaderNomination('${n.id}')">️ Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteMyNomination('${n.id}')">🗑️ Delete</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+function addNewNomination() {
+  // Clear all fields and go to step 2
+  ['nom-name', 'nom-dept', 'nom-category', 'nom-desc'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('pic-preview').style.display = 'none';
+  tempPic = '';
+  
+  document.getElementById('nomination-step-1').classList.remove('active');
+  document.getElementById('nomination-step-2').classList.add('active');
+  document.getElementById('leader-history-card').style.display = 'none';
+}
+
+function editLeaderNomination(nomId) {
+  editNomination(nomId);
+}
+
+function resetNominationForm() {
+  document.getElementById('nomination-step-1').classList.add('active');
+  document.getElementById('nomination-step-2').classList.remove('active');
+  document.getElementById('leader-history-card').style.display = 'none';
+  ['nom-leader-name', 'nom-leader-dept', 'nom-name', 'nom-dept', 'nom-category', 'nom-desc'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('pic-preview').style.display = 'none';
+  tempPic = '';
+  currentLeader = {name: '', dept: ''};
 }
 
 // ============ ADMIN FUNCTIONS ============
@@ -1050,7 +1168,7 @@ function renderAdminVotes() {
         </div>
         <div style="display:flex;gap:5px;">
           <button class="btn btn-info btn-sm" onclick="viewVote('${voteId}')">👁️ View/Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteVote('${voteId}')">️ Delete</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteVote('${voteId}')">🗑️ Delete</button>
         </div>
       </div>
     </div>
@@ -1219,6 +1337,7 @@ function saveEditedNomination() {
     showAlert('Nomination updated successfully!', 'success');
     closeEditNominationModal();
     tempEditPic = '';
+    loadLeaderHistory();
   }).catch(err => showAlert('Error: ' + err.message, 'error'));
 }
 
@@ -1229,20 +1348,22 @@ function closeEditNominationModal() {
 
 // ============ NOMINATION FUNCTIONS ============
 function submitNomination() {
-  const leaderName = document.getElementById('nom-leader-name').value.trim();
-  const leaderDept = document.getElementById('nom-leader-dept').value.trim();
   const nomName = document.getElementById('nom-name').value.trim();
   const nomDept = document.getElementById('nom-dept').value.trim();
   const category = document.getElementById('nom-category').value;
   const desc = document.getElementById('nom-desc').value.trim();
   
-  if(!leaderName || !leaderDept) return showAlert('Please fill your details.', 'error');
   if(!nomName || !nomDept || !category || !desc) return showAlert('Please fill all nominee fields.', 'error');
   
   const nomination = {
     id: Date.now().toString(),
-    leaderName, leaderDept, nomineeName: nomName, nomineeDept: nomDept,
-    category, description: desc, image: tempPic || '',
+    leaderName: currentLeader.name,
+    leaderDept: currentLeader.dept,
+    nomineeName: nomName,
+    nomineeDept: nomDept,
+    category,
+    description: desc,
+    image: tempPic || '',
     timestamp: new Date().toISOString()
   };
   
@@ -1250,40 +1371,16 @@ function submitNomination() {
   db.ref(path).set(nomination)
     .then(() => {
       showAlert('Nomination submitted successfully!', 'success');
-      ['nom-leader-name', 'nom-leader-dept', 'nom-name', 'nom-dept', 'nom-desc'].forEach(id => document.getElementById(id).value = '');
-      document.getElementById('nom-category').value = '';
+      // Reset form
+      ['nom-name', 'nom-dept', 'nom-category', 'nom-desc'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('pic-preview').style.display = 'none';
       tempPic = '';
-      currentLeader = {name: leaderName, dept: leaderDept};
-      loadMyNominations();
+      // Show history
+      loadLeaderHistory();
+      document.getElementById('nomination-step-2').classList.remove('active');
+      document.getElementById('leader-history-card').style.display = 'block';
     })
     .catch(err => showAlert('Error: ' + err.message, 'error'));
-}
-
-function loadMyNominations() {
-  if(!currentLeader.name) return;
-  
-  const path = 'nominations/' + currentPeriod.replace(' ', '_');
-  db.ref(path).orderByChild('leaderName').equalTo(currentLeader.name).once('value', snap => {
-    const myNoms = [];
-    snap.forEach(child => myNoms.push({id: child.key, ...child.val()}));
-    
-    if(myNoms.length === 0) {
-      document.getElementById('my-nominations-card').style.display = 'none';
-      return;
-    }
-    
-    document.getElementById('my-nominations-card').style.display = 'block';
-    document.getElementById('my-nominations-list').innerHTML = myNoms.map(n => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;">
-        <div>
-          <strong>${n.nomineeName}</strong> - ${n.category}
-          <small style="color:#666;display:block;">${n.description.substring(0, 50)}...</small>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteMyNomination('${n.id}')">Delete</button>
-      </div>
-    `).join('');
-  });
 }
 
 function deleteMyNomination(id) {
@@ -1291,7 +1388,7 @@ function deleteMyNomination(id) {
   const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + id;
   db.ref(path).remove().then(() => {
     showAlert('Nomination deleted.', 'success');
-    loadMyNominations();
+    loadLeaderHistory();
   });
 }
 
@@ -1631,85 +1728,108 @@ function downloadReport() {
   }
 }
 
-function downloadReport() {
+// ============ PDF REPORT GENERATION ============
+async function downloadPDFReport() {
   try {
-    if (typeof XLSX === 'undefined') {
-      showAlert('Excel library not loaded. Please check your internet connection.', 'error');
-      return;
-    }
-    const wb = XLSX.utils.book_new();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
     
-    // Create a sheet for each category
-    categories.forEach(cat => {
-      const catNominations = nominations.filter(n => n.category === cat.name);
+    // Title
+    doc.setFontSize(20);
+    doc.text(`Voting Report - ${currentPeriod}`, 105, 15, { align: 'center' });
+    
+    let yPos = 30;
+    
+    // Process each category
+    for (const cat of categories) {
+      const catNominations = (nominations || []).filter(n => n.category === cat.name);
       
+      // Category header
+      doc.setFontSize(14);
+      doc.text(cat.name, 14, yPos);
+      yPos += 10;
+      
+      // Table headers
+      doc.setFontSize(10);
+      doc.text('Rank', 14, yPos);
+      doc.text('Nominee', 30, yPos);
+      doc.text('Department', 80, yPos);
+      doc.text('Total Score', 130, yPos);
+      doc.text('Avg', 160, yPos);
+      doc.text('Votes', 180, yPos);
+      yPos += 5;
+      doc.line(14, yPos, 196, yPos);
+      yPos += 5;
+      
+      // Calculate scores and sort
       const reportData = catNominations.map(n => {
         let totalScore = 0;
         let voteCount = 0;
         
-        Object.values(votes).forEach(vote => {
-          const rating = vote.ratings[cat.name]?.[n.id];
-          if(rating !== undefined) {
-            totalScore += parseInt(rating);
-            voteCount++;
-          }
-        });
+        if (votes && typeof votes === 'object') {
+          Object.values(votes).forEach(vote => {
+            if (vote && vote.ratings && vote.ratings[cat.name]) {
+              const rating = vote.ratings[cat.name][n.id];
+              if (rating !== undefined && rating !== null) {
+                totalScore += parseInt(rating) || 0;
+                voteCount++;
+              }
+            }
+          });
+        }
         
         const average = voteCount > 0 ? (totalScore / voteCount).toFixed(2) : 0;
         
         return {
-          'Rank': 0, // Will be updated after sort
-          'Nominee Name': n.nomineeName,
-          'Department': n.nomineeDept,
-          'Nominated By': n.leaderName,
-          'Description': n.description,
-          'Has Photo': n.image ? 'Yes' : 'No',
-          'Total Score': totalScore,
-          'Average Rating': average,
-          'Number of Votes': voteCount
+          nomineeName: n.nomineeName || '',
+          department: n.nomineeDept || '',
+          totalScore,
+          average,
+          voteCount,
+          image: n.image
         };
       });
       
-      // Sort by total score (descending)
-      reportData.sort((a, b) => b['Total Score'] - a['Total Score']);
+      reportData.sort((a, b) => b.totalScore - a.totalScore);
       
-      // Add ranking
+      // Display nominees
       reportData.forEach((row, index) => {
-        row.Rank = index + 1;
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 15;
+        }
+        
+        doc.text(String(index + 1), 14, yPos);
+        doc.text(row.nomineeName.substring(0, 15), 30, yPos);
+        doc.text(row.department.substring(0, 15), 80, yPos);
+        doc.text(String(row.totalScore), 130, yPos);
+        doc.text(String(row.average), 160, yPos);
+        doc.text(String(row.voteCount), 180, yPos);
+        
+        // Add photo if available
+        if (row.image) {
+          try {
+            // Convert base64 to image and add to PDF
+            const imgData = row.image;
+            doc.addImage(imgData, 'JPEG', 190, yPos - 5, 8, 8);
+          } catch (e) {
+            // Ignore image errors
+          }
+        }
+        
+        yPos += 8;
       });
       
-      const ws = XLSX.utils.json_to_sheet(reportData);
-      // Excel sheet names cannot exceed 31 characters and cannot contain certain characters
-      const sheetName = cat.name.substring(0, 31).replace(/[\\/\?\*\[\]]/g, '') || 'Category';
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    });
+      yPos += 10;
+    }
     
-    // Summary Sheet
-    const summaryData = categories.map(cat => {
-      const catNoms = nominations.filter(n => n.category === cat.name);
-      let totalVotes = 0;
-      catNoms.forEach(n => {
-        Object.values(votes).forEach(v => {
-          if(v.ratings[cat.name]?.[n.id]) totalVotes++;
-        });
-      });
-      return {
-        'Category': cat.name,
-        'Total Nominations': catNoms.length,
-        'Total Votes': totalVotes
-      };
-    });
-    
-    const summaryWS = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, summaryWS, 'Summary');
-    
-    // Download
-    const fileName = `VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-    showAlert('Report downloaded successfully!', 'success');
+    // Save PDF
+    const fileName = `VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    doc.save(fileName);
+    showAlert('PDF report downloaded successfully!', 'success');
   } catch (error) {
-    console.error('Report download error:', error);
-    showAlert('Failed to download report: ' + error.message, 'error');
+    console.error('PDF generation error:', error);
+    showAlert('Failed to generate PDF: ' + error.message, 'error');
   }
 }
 
@@ -1759,7 +1879,7 @@ function confirmReset() {
 }
 
 function resetAllData() {
-  if(!confirm('⚠️ WARNING: This will permanently delete ALL data. Continue?')) return;
+  if(!confirm('️ WARNING: This will permanently delete ALL data. Continue?')) return;
   if(!confirm('Are you absolutely sure? This cannot be undone!')) return;
   
   db.ref('nominations').remove();
