@@ -82,6 +82,47 @@ textarea{resize:vertical;min-height:100px;}
 .rating-input{display:flex;align-items:center;gap:10px;padding:12px;background:#faf7fa;border-radius:8px;}
 .rating-input input{width:80px;padding:8px;text-align:center;font-size:1.2rem;font-weight:bold;color:var(--brand);border:2px solid var(--border);border-radius:6px;}
 
+/* New Rating Buttons */
+.rating-btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+.rating-btn {
+  width: 50px;
+  height: 40px;
+  border: 2px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rating-btn:hover:not(:disabled) {
+  border-color: var(--brand);
+  background: #f5eef5;
+}
+.rating-btn.active {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+  box-shadow: 0 4px 6px rgba(109,48,99,0.2);
+}
+.rating-btn.zero.active {
+  background: #94a3b8;
+  border-color: #94a3b8;
+  color: #fff;
+}
+.rating-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .data-table{width:100%;border-collapse:collapse;margin-top:15px;}
 .data-table th,.data-table td{padding:12px;text-align:left;border-bottom:1px solid var(--border);}
 .data-table th{background:var(--brand);color:#fff;font-weight:bold;}
@@ -279,7 +320,7 @@ textarea{resize:vertical;min-height:100px;}
 
     <div class="card" id="voter-info-card" style="display:none;">
       <h2 id="votingTitle">️ Cast Your Vote</h2>
-      <p id="votingSubtitle" class="subtitle">Rate up to 3 unique nominees per category on a scale of 1-3. Your vote is confidential.</p>
+      <p id="votingSubtitle" class="subtitle">Rate up to 3 unique nominees per category on a scale of 1-3. Use '0' to remove a vote. Your vote is confidential.</p>
       
       <div class="form-group">
         <label>Your Full Name *</label>
@@ -320,7 +361,7 @@ textarea{resize:vertical;min-height:100px;}
           </div>
           <div style="text-align:right;">
             <div style="font-size:0.9rem;color:#666;">Progress</div>
-            <div id="progress-text" style="font-weight:bold;color:var(--brand);">0 of 0 rated</div>
+            <div id="progress-text" style="font-weight:bold;color:var(--brand);">0 active votes cast</div>
           </div>
         </div>
         
@@ -1082,7 +1123,6 @@ function renderAdminNominations() {
     return;
   }
   
-  // Count nominations per nominee name AND category to detect duplicates correctly
   const nomineeCatCounts = {};
   nominations.forEach(n => {
     const key = n.nomineeName.toLowerCase().trim() + '_' + n.category;
@@ -1109,7 +1149,6 @@ function renderAdminNominations() {
               </div>
             `;
         } else {
-            // Hide completely for subsequent duplicate profiles in the same category
             bonusHtml = '';
         }
     }
@@ -1136,15 +1175,14 @@ function renderAdminNominations() {
 function updateAdminBonus(nomId, value, key) {
   const bonus = parseInt(value) || 0;
   
-  // Find all nominations for this person IN THE SAME CATEGORY
   const relatedNoms = nominations.filter(n => (n.nomineeName.toLowerCase().trim() + '_' + n.category) === key);
   
   const updates = {};
   relatedNoms.forEach(n => {
     if (n.id === nomId) {
-      updates[n.id + '/adminBonus'] = bonus; // Primary profile gets the bonus
+      updates[n.id + '/adminBonus'] = bonus; 
     } else {
-      updates[n.id + '/adminBonus'] = null;  // Other duplicate profiles marked as null
+      updates[n.id + '/adminBonus'] = null;  
     }
   });
   
@@ -1157,10 +1195,8 @@ function updateAdminBonus(nomId, value, key) {
       else n.adminBonus = null;
     });
     
-    // Re-render admin nominations
     renderAdminNominations();
     
-    // Re-render results if the admin is viewing them
     const activeTab = document.querySelector('#admin-cat-tabs .cat-tab.active');
     if(activeTab) {
       showAdminCategory(activeTab.textContent, activeTab);
@@ -1187,7 +1223,7 @@ function showAdminCategory(catName, btn) {
   let results = noms.map(n => {
     let totalScore = 0;
     let voteCount = 0;
-    let totalBonus = parseInt(n.adminBonus) || 0; // Include Admin Bonus
+    let totalBonus = parseInt(n.adminBonus) || 0; 
     
     Object.values(votes).forEach(v => {
       const rating = v.ratings && v.ratings[catName] ? v.ratings[catName][n.id] : null;
@@ -1572,7 +1608,6 @@ function renderVotingInterface() {
     const noms = nominations.filter(n => n.category === c.name);
     if(noms.length === 0) return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}"><p style="text-align:center;padding:30px;color:#888;">No nominations yet.</p></div>`;
     
-    // Track which nominees have already been given a rating input in this category
     const ratedNominees = new Set();
     
     return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}">
@@ -1598,14 +1633,25 @@ function renderVotingInterface() {
               </div>
               <p class="nominee-desc">${n.description}</p>
               ${hasRatingInput ? `
-                <div class="rating-input">
-                  <label>Your Rating (1-3):</label>
-                  <input type="number" min="1" max="3" class="rate-input" data-cat="${c.name}" data-nom="${n.id}" placeholder="1-3">
+                <div class="rating-input" style="flex-direction: column; align-items: flex-start;">
+                  <label style="margin-bottom: 8px;">Your Rating:</label>
+                  <div class="rating-btn-group">
+                    <button type="button" class="rating-btn zero ${!(voterRatings[c.name] && voterRatings[c.name][n.id]) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="0">0</button>
+                    <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 1) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="1">1</button>
+                    <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 2) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="2">2</button>
+                    <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 3) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="3">3</button>
+                  </div>
+                  <small style="color:#888; font-size:0.75rem; margin-top:6px;">Vote for max 3 per category (0 = No Vote)</small>
                 </div>
               ` : `
-                <div class="rating-input" style="opacity: 0.6; pointer-events: none;">
-                  <label>Rating (Already rated for this nominee):</label>
-                  <input type="text" disabled placeholder="N/A" style="background: #eee;">
+                <div class="rating-input" style="opacity: 0.6; pointer-events: none; flex-direction: column; align-items: flex-start;">
+                  <label style="margin-bottom: 8px;">Rating (Duplicate profile):</label>
+                  <div class="rating-btn-group">
+                    <button type="button" class="rating-btn zero active" disabled>0</button>
+                    <button type="button" class="rating-btn" disabled>1</button>
+                    <button type="button" class="rating-btn" disabled>2</button>
+                    <button type="button" class="rating-btn" disabled>3</button>
+                  </div>
                 </div>
               `}
             </div>
@@ -1615,37 +1661,38 @@ function renderVotingInterface() {
     </div>`;
   }).join('');
   
-  document.querySelectorAll('.rate-input').forEach(inp => {
-    inp.oninput = function() {
+  document.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      if (this.disabled) return;
+      
       const catName = this.dataset.cat;
       const nomId = this.dataset.nom;
-      const val = parseInt(this.value);
+      const val = parseInt(this.dataset.val);
       
-      if(this.value === '' || (!isNaN(val) && val >= 1 && val <= 3)) {
-        // Check max 3 limit per category
-        if (this.value !== '') {
-          const currentlyRatedInCat = Object.keys(voterRatings[catName] || {}).length;
-          const isAlreadyRated = voterRatings[catName] && voterRatings[catName][nomId] !== undefined;
-          
-          if (!isAlreadyRated && currentlyRatedInCat >= 3) {
-            showAlert(`You can vote for a maximum of 3 nominees in ${catName}.`, 'error');
-            this.value = '';
-            this.style.borderColor = '#c0392b';
-            return;
-          }
-        }
-        
-        this.style.borderColor = 'var(--border)';
-        if(this.value === '') {
-            if(voterRatings[catName]) delete voterRatings[catName][nomId];
-        } else {
-            if(!voterRatings[catName]) voterRatings[catName] = {};
-            voterRatings[catName][nomId] = val;
-        }
-        updateProgress();
-      } else {
-        this.style.borderColor = '#c0392b';
+      const currentRating = (voterRatings[catName] && voterRatings[catName][nomId]) ? voterRatings[catName][nomId] : 0;
+      const activeVotesInCat = voterRatings[catName] ? Object.keys(voterRatings[catName]).length : 0;
+      
+      if (val > 0 && currentRating === 0 && activeVotesInCat >= 3) {
+        showAlert(`Maximum 3 votes allowed in ${catName}. Set an existing vote to 0 to change your choice.`, 'error');
+        return;
       }
+      
+      if (!voterRatings[catName]) voterRatings[catName] = {};
+      
+      if (val === 0) {
+        delete voterRatings[catName][nomId];
+      } else {
+        voterRatings[catName][nomId] = val;
+      }
+      
+      const group = this.closest('.rating-btn-group');
+      if (group) {
+        group.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+      }
+      
+      updateProgress();
     };
   });
   
@@ -1669,16 +1716,11 @@ function updateProgress() {
   
   categories.forEach(c => {
     if(voterRatings[c.name]) {
-      Object.keys(voterRatings[c.name]).forEach(nomId => {
-        const nom = nominations.find(n => n.id === nomId && n.category === c.name);
-        if(nom) {
-          uniqueRated++;
-        }
-      });
+      uniqueRated += Object.keys(voterRatings[c.name]).length;
     }
   });
   
-  document.getElementById('progress-text').innerText = uniqueRated + ' of ' + allUniqueNominees.size + ' unique nominees rated';
+  document.getElementById('progress-text').innerText = uniqueRated + ' active votes cast';
   document.getElementById('progress-fill').style.width = (allUniqueNominees.size > 0 ? (uniqueRated / allUniqueNominees.size * 100) : 0) + '%';
 }
 
@@ -1806,7 +1848,7 @@ function downloadReport() {
         const reportData = catNominations.map(n => {
           let totalScore = 0;
           let voteCount = 0;
-          let totalBonus = parseInt(n.adminBonus) || 0; // Include Admin Bonus
+          let totalBonus = parseInt(n.adminBonus) || 0; 
           
           if (votes && typeof votes === 'object') {
             Object.values(votes).forEach(vote => {
@@ -1918,7 +1960,7 @@ async function downloadPDFReport() {
       const reportData = catNominations.map(n => {
         let totalScore = 0;
         let voteCount = 0;
-        let totalBonus = parseInt(n.adminBonus) || 0; // Include Admin Bonus
+        let totalBonus = parseInt(n.adminBonus) || 0; 
         
         if (votes && typeof votes === 'object') {
           Object.values(votes).forEach(vote => {
