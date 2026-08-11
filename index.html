@@ -279,7 +279,7 @@ textarea{resize:vertical;min-height:100px;}
 
     <div class="card" id="voter-info-card" style="display:none;">
       <h2 id="votingTitle">️ Cast Your Vote</h2>
-      <p id="votingSubtitle" class="subtitle">Rate all unique nominees on a scale of 1-3. Your vote is confidential.</p>
+      <p id="votingSubtitle" class="subtitle">Rate nominees on a scale of 1-3. Your vote is confidential.</p>
       
       <div class="form-group">
         <label>Your Full Name *</label>
@@ -331,7 +331,7 @@ textarea{resize:vertical;min-height:100px;}
         <div class="category-tabs" id="cat-tabs"></div>
         <div id="nominee-list"></div>
         
-        <button class="btn btn-success btn-full" onclick="submitVotes()" style="margin-top:25px;">✅ Submit All Votes</button>
+        <button class="btn btn-success btn-full" onclick="submitVotes()" style="margin-top:25px;">✅ Submit Votes</button>
       </div>
     </div>
   </div>
@@ -435,7 +435,7 @@ textarea{resize:vertical;min-height:100px;}
             </div>
             <div class="form-group">
               <label>Voting Page Subtitle</label>
-              <textarea id="setting-vote-subtitle" placeholder="Rate all unique nominees on a scale of 1-3..." rows="2"></textarea>
+              <textarea id="setting-vote-subtitle" placeholder="Rate nominees on a scale of 1-3..." rows="2"></textarea>
             </div>
             <button class="btn btn-primary" onclick="savePageSettings()" style="margin-top:10px;">💾 Save Page Settings</button>
           </div>
@@ -1659,23 +1659,16 @@ function updateProgress() {
 }
 
 function submitVotes() {
-  let missing = 0;
-  categories.forEach(c => {
-    const noms = nominations.filter(n => n.category === c.name);
-    const uniqueNominees = new Map();
-    noms.forEach(n => {
-      const normalizedName = n.nomineeName.toLowerCase().trim();
-      if (!uniqueNominees.has(normalizedName)) {
-        uniqueNominees.set(normalizedName, n.id);
-      }
-    });
-    
-    uniqueNominees.forEach((nomId, nomName) => {
-      if(!voterRatings[c.name] || !voterRatings[c.name][nomId]) missing++;
-    });
+  // Count total ratings provided
+  let totalRated = 0;
+  Object.keys(voterRatings).forEach(cat => {
+    totalRated += Object.keys(voterRatings[cat] || {}).length;
   });
   
-  if(missing > 0) return showAlert('Please rate all unique nominees. ' + missing + ' missing.', 'error');
+  // Ensure at least one vote is cast before submitting
+  if(totalRated === 0) {
+    return showAlert('Please rate at least one nominee before submitting.', 'error');
+  }
   
   const voteData = {
     voterName: currentVoter.name,
