@@ -279,7 +279,7 @@ textarea{resize:vertical;min-height:100px;}
 
     <div class="card" id="voter-info-card" style="display:none;">
       <h2 id="votingTitle">️ Cast Your Vote</h2>
-      <p id="votingSubtitle" class="subtitle">Rate nominees on a scale of 1-3. Your vote is confidential.</p>
+      <p id="votingSubtitle" class="subtitle">Rate up to 3 unique nominees per category on a scale of 1-3. Your vote is confidential.</p>
       
       <div class="form-group">
         <label>Your Full Name *</label>
@@ -435,7 +435,7 @@ textarea{resize:vertical;min-height:100px;}
             </div>
             <div class="form-group">
               <label>Voting Page Subtitle</label>
-              <textarea id="setting-vote-subtitle" placeholder="Rate nominees on a scale of 1-3..." rows="2"></textarea>
+              <textarea id="setting-vote-subtitle" placeholder="Rate up to 3 unique nominees per category..." rows="2"></textarea>
             </div>
             <button class="btn btn-primary" onclick="savePageSettings()" style="margin-top:10px;">💾 Save Page Settings</button>
           </div>
@@ -1136,19 +1136,26 @@ function renderAdminNominations() {
 function updateAdminBonus(nomId, value, key) {
   const bonus = parseInt(value) || 0;
   
-  // Find all nominations for this person IN THE SAME CATEGORY to apply bonus consistently across duplicates
+  // Find all nominations for this person IN THE SAME CATEGORY
   const relatedNoms = nominations.filter(n => (n.nomineeName.toLowerCase().trim() + '_' + n.category) === key);
   
   const updates = {};
   relatedNoms.forEach(n => {
-    updates[n.id + '/adminBonus'] = bonus;
+    if (n.id === nomId) {
+      updates[n.id + '/adminBonus'] = bonus; // Primary profile gets the bonus
+    } else {
+      updates[n.id + '/adminBonus'] = null;  // Other duplicate profiles marked as null
+    }
   });
   
   const basePath = 'nominations/' + currentPeriod.replace(' ', '_');
   
   db.ref(basePath).update(updates).then(() => {
-    showAlert('Admin bonus updated for duplicate profiles in this category!', 'success');
-    relatedNoms.forEach(n => n.adminBonus = bonus);
+    showAlert('Admin bonus updated for primary profile! Duplicates marked as null.', 'success');
+    relatedNoms.forEach(n => {
+      if (n.id === nomId) n.adminBonus = bonus;
+      else n.adminBonus = null;
+    });
     
     // Re-render admin nominations
     renderAdminNominations();
@@ -1615,9 +1622,26 @@ function renderVotingInterface() {
       const val = parseInt(this.value);
       
       if(this.value === '' || (!isNaN(val) && val >= 1 && val <= 3)) {
+        // Check max 3 limit per category
+        if (this.value !== '') {
+          const currentlyRatedInCat = Object.keys(voterRatings[catName] || {}).length;
+          const isAlreadyRated = voterRatings[catName] && voterRatings[catName][nomId] !== undefined;
+          
+          if (!isAlreadyRated && currentlyRatedInCat >= 3) {
+            showAlert(`You can vote for a maximum of 3 nominees in ${catName}.`, 'error');
+            this.value = '';
+            this.style.borderColor = '#c0392b';
+            return;
+          }
+        }
+        
         this.style.borderColor = 'var(--border)';
-        if(this.value === '') delete voterRatings[catName][nomId];
-        else voterRatings[catName][nomId] = val;
+        if(this.value === '') {
+            if(voterRatings[catName]) delete voterRatings[catName][nomId];
+        } else {
+            if(!voterRatings[catName]) voterRatings[catName] = {};
+            voterRatings[catName][nomId] = val;
+        }
         updateProgress();
       } else {
         this.style.borderColor = '#c0392b';
@@ -1659,13 +1683,19 @@ function updateProgress() {
 }
 
 function submitVotes() {
-  // Count total ratings provided
   let totalRated = 0;
+  let limitExceeded = false;
+  
   Object.keys(voterRatings).forEach(cat => {
-    totalRated += Object.keys(voterRatings[cat] || {}).length;
+    const count = Object.keys(voterRatings[cat] || {}).length;
+    totalRated += count;
+    if (count > 3) limitExceeded = true;
   });
   
-  // Ensure at least one vote is cast before submitting
+  if (limitExceeded) {
+    return showAlert('You cannot vote for more than 3 nominees in a single category.', 'error');
+  }
+  
   if(totalRated === 0) {
     return showAlert('Please rate at least one nominee before submitting.', 'error');
   }
