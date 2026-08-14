@@ -6,6 +6,7 @@
 <title>Employee of the Month - Voting System</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -82,45 +83,12 @@ textarea{resize:vertical;min-height:100px;}
 .rating-input{display:flex;align-items:center;gap:10px;padding:12px;background:#faf7fa;border-radius:8px;}
 .rating-input input{width:80px;padding:8px;text-align:center;font-size:1.2rem;font-weight:bold;color:var(--brand);border:2px solid var(--border);border-radius:6px;}
 
-.rating-btn-group {
-  display: flex;
-  gap: 10px;
-  margin-top: 5px;
-}
-.rating-btn {
-  width: 50px;
-  height: 40px;
-  border: 2px solid var(--border);
-  background: #fff;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.rating-btn:hover:not(:disabled) {
-  border-color: var(--brand);
-  background: #f5eef5;
-}
-.rating-btn.active {
-  background: var(--brand);
-  color: #fff;
-  border-color: var(--brand);
-  box-shadow: 0 4px 6px rgba(109,48,99,0.2);
-}
-.rating-btn.zero.active {
-  background: #94a3b8;
-  border-color: #94a3b8;
-  color: #fff;
-}
-.rating-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
+.rating-btn-group { display: flex; gap: 10px; margin-top: 5px; }
+.rating-btn { width: 50px; height: 40px; border: 2px solid var(--border); background: #fff; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: all 0.2s; color: var(--text); display: flex; align-items: center; justify-content: center; }
+.rating-btn:hover:not(:disabled) { border-color: var(--brand); background: #f5eef5; }
+.rating-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); box-shadow: 0 4px 6px rgba(109,48,99,0.2); }
+.rating-btn.zero.active { background: #94a3b8; border-color: #94a3b8; color: #fff; }
+.rating-btn:disabled { cursor: not-allowed; opacity: 0.5; }
 
 .data-table{width:100%;border-collapse:collapse;margin-top:15px;}
 .data-table th,.data-table td{padding:12px;text-align:left;border-bottom:1px solid var(--border);}
@@ -165,7 +133,6 @@ textarea{resize:vertical;min-height:100px;}
 .leader-history-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .leader-history-item-actions{display:flex;gap:5px;}
 
-/* Detailed Analysis Styles */
 .analysis-controls{display:flex;gap:15px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end;}
 .analysis-controls .form-group{margin-bottom:0;flex:1;min-width:180px;}
 .view-toggle{display:flex;gap:5px;margin-bottom:15px;}
@@ -178,6 +145,7 @@ textarea{resize:vertical;min-height:100px;}
 .summary-card .summary-label{font-size:0.85rem;color:#666;margin-top:5px;}
 .detailed-table{max-height:600px;overflow-y:auto;border-radius:8px;border:1px solid var(--border);}
 .detailed-table table{margin:0;}
+.matrix-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border);}
 .rating-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:0.85rem;}
 .rating-3{background:#d4edda;color:#155724;}
 .rating-2{background:#fff3cd;color:#856404;}
@@ -202,7 +170,7 @@ textarea{resize:vertical;min-height:100px;}
 <div class="header">
   <div class="header-content">
     <div class="hotel-logo" id="hotelLogo">🏨</div>
-    <div class="header-info">
+    <div class="hotel-info">
       <h1 id="hotelName">Grand Plaza Hotel</h1>
       <p id="hotelSubheading">Employee of the Month Awards</p>
     </div>
@@ -227,14 +195,12 @@ textarea{resize:vertical;min-height:100px;}
       <h2 id="nominationTitle"> Submit a Nomination</h2>
       <p id="nominationSubtitle" class="subtitle">Leaders: Recognize outstanding team members by nominating them for awards.</p>
       
-      <!-- Step 1: Leader Details -->
       <div id="nomination-step-1" class="nomination-step active">
         <h3 style="color:var(--brand);margin-bottom:15px;">Step 1: Your Information</h3>
         <div class="form-group">
           <label>Your Name (Leader/Nominator) *</label>
           <input type="text" id="nom-leader-name" placeholder="Enter your full name">
         </div>
-        
         <div class="form-group">
           <label>Your Department *</label>
           <select id="nom-leader-dept" required>
@@ -256,20 +222,13 @@ textarea{resize:vertical;min-height:100px;}
             <option value="Reservations">Reservations</option>
           </select>
         </div>
-        
         <button class="btn btn-primary btn-full" onclick="submitLeaderDetails()">Continue to Nominee Details →</button>
       </div>
       
-      <!-- Step 2: Nominee Details -->
       <div id="nomination-step-2" class="nomination-step">
         <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
           <h3 style="color:var(--brand);margin-bottom:15px;">Step 2: Nominee Information</h3>
-          
-          <div class="form-group">
-            <label>Nominee Full Name *</label>
-            <input type="text" id="nom-name" placeholder="Enter nominee's full name">
-          </div>
-          
+          <div class="form-group"><label>Nominee Full Name *</label><input type="text" id="nom-name" placeholder="Enter nominee's full name"></div>
           <div class="form-group">
             <label>Nominee Department *</label>
             <select id="nom-dept" required>
@@ -291,19 +250,14 @@ textarea{resize:vertical;min-height:100px;}
               <option value="Reservations">Reservations</option>
             </select>
           </div>
-          
           <div class="form-group">
             <label>Award Category *</label>
-            <select id="nom-category">
-              <option value="">-- Select Award Category --</option>
-            </select>
+            <select id="nom-category"><option value="">-- Select Award Category --</option></select>
           </div>
-          
           <div class="form-group">
             <label>Reason for Nomination *</label>
-            <textarea id="nom-desc" placeholder="Describe why this person deserves this award. Include specific achievements, contributions, and examples."></textarea>
+            <textarea id="nom-desc" placeholder="Describe why this person deserves this award."></textarea>
           </div>
-          
           <div class="form-group">
             <label>Profile Picture (Optional)</label>
             <div class="file-upload" id="pic-drop">
@@ -313,7 +267,6 @@ textarea{resize:vertical;min-height:100px;}
             </div>
             <img id="pic-preview" style="max-width:200px;margin-top:10px;border-radius:8px;display:none;">
           </div>
-          
           <div style="display:flex;gap:10px;">
             <button class="btn btn-outline" onclick="backToStep1()" style="flex:1;">← Back</button>
             <button class="btn btn-primary" onclick="submitNomination()" style="flex:2;">✅ Submit Nomination</button>
@@ -322,7 +275,6 @@ textarea{resize:vertical;min-height:100px;}
       </div>
     </div>
 
-    <!-- Leader's Previous Nominations -->
     <div class="card" id="leader-history-card" style="display:none;">
       <h2>📋 My Previous Nominations</h2>
       <p class="subtitle">View, edit, or manage your submitted nominations.</p>
@@ -341,12 +293,7 @@ textarea{resize:vertical;min-height:100px;}
     <div class="card" id="voter-info-card" style="display:none;">
       <h2 id="votingTitle">️ Cast Your Vote</h2>
       <p id="votingSubtitle" class="subtitle">Rate up to 3 unique nominees per category on a scale of 1-3. Use '0' to remove a vote. Your vote is confidential.</p>
-      
-      <div class="form-group">
-        <label>Your Full Name *</label>
-        <input type="text" id="voter-name" placeholder="Enter your full name">
-      </div>
-      
+      <div class="form-group"><label>Your Full Name *</label><input type="text" id="voter-name" placeholder="Enter your full name"></div>
       <div class="form-group">
         <label>Your Department *</label>
         <select id="voter-dept" required>
@@ -368,30 +315,21 @@ textarea{resize:vertical;min-height:100px;}
           <option value="Reservations">Reservations</option>
         </select>
       </div>
-      
       <button class="btn btn-primary btn-full" onclick="startVoting()">Start Voting →</button>
     </div>
     
     <div id="voting-interface" style="display:none;">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;margin-bottom:20px;">
-          <div>
-            <strong style="color:var(--brand);">Voting as:</strong> 
-            <span id="voter-display" style="color:var(--brand);font-size:1.1rem;"></span>
-          </div>
+          <div><strong style="color:var(--brand);">Voting as:</strong> <span id="voter-display" style="color:var(--brand);font-size:1.1rem;"></span></div>
           <div style="text-align:right;">
             <div style="font-size:0.9rem;color:#666;">Progress</div>
             <div id="progress-text" style="font-weight:bold;color:var(--brand);">0 active votes cast</div>
           </div>
         </div>
-        
-        <div class="progress-container">
-          <div class="progress-bar" id="progress-fill" style="width:0%"></div>
-        </div>
-        
+        <div class="progress-container"><div class="progress-bar" id="progress-fill" style="width:0%"></div></div>
         <div class="category-tabs" id="cat-tabs"></div>
         <div id="nominee-list"></div>
-        
         <button class="btn btn-success btn-full" onclick="submitVotes()" style="margin-top:25px;">✅ Submit Votes</button>
       </div>
     </div>
@@ -430,17 +368,31 @@ textarea{resize:vertical;min-height:100px;}
         </div>
       </div>
 
-      <!-- NEW: Detailed Voting Analysis Section -->
+      <!-- NEW: CATEGORY SUMMARY MATRIX -->
+      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+        <h3 style="color:var(--brand);margin-bottom:15px;">📋 Category Summary Matrix (Leader-wise Ratings)</h3>
+        <p style="color:#666;margin-bottom:15px;">Select a category to view the leader-wise rating matrix with Bonus Points and Grand Total (matches the summary table format).</p>
+        <div class="analysis-controls">
+          <div class="form-group">
+            <label>Select Category</label>
+            <select id="matrix-category-select" onchange="renderCategoryMatrix()"></select>
+          </div>
+          <div class="form-group" style="flex:0 0 auto;">
+            <label>&nbsp;</label>
+            <button class="btn btn-info" onclick="downloadMatrixPDF()">📄 Download PDF</button>
+          </div>
+        </div>
+        <div class="matrix-wrap" id="matrix-table-container"></div>
+      </div>
+
+      <!-- Detailed Voting Analysis -->
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
         <h3 style="color:var(--brand);margin-bottom:15px;">📊 Detailed Voting Analysis</h3>
         <p style="color:#666;margin-bottom:15px;">View detailed voting patterns leader-wise or nominee-wise with customizable filters.</p>
-        
         <div class="analysis-controls">
           <div class="form-group">
             <label>Filter by Category</label>
-            <select id="analysis-category-filter" onchange="renderDetailedAnalysis()">
-              <option value="all">All Categories</option>
-            </select>
+            <select id="analysis-category-filter" onchange="renderDetailedAnalysis()"><option value="all">All Categories</option></select>
           </div>
           <div class="form-group">
             <label>Search Leader/Nominee</label>
@@ -458,21 +410,17 @@ textarea{resize:vertical;min-height:100px;}
             </select>
           </div>
         </div>
-
         <div class="view-toggle">
           <button class="view-toggle-btn active" id="view-leader-btn" onclick="switchDetailedView('leader')">👤 Leader-wise View</button>
           <button class="view-toggle-btn" id="view-nominee-btn" onclick="switchDetailedView('nominee')">🏆 Nominee-wise View</button>
         </div>
-
         <div class="analysis-summary" id="analysis-summary"></div>
-
         <div class="detailed-table">
           <table class="data-table" id="detailed-analysis-table">
             <thead id="detailed-table-head"></thead>
             <tbody id="detailed-table-body"></tbody>
           </table>
         </div>
-
         <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-success" onclick="downloadDetailedExcel()">📥 Download Excel Report</button>
           <button class="btn btn-info" onclick="downloadDetailedPDF()">📄 Download PDF Report</button>
@@ -501,53 +449,26 @@ textarea{resize:vertical;min-height:100px;}
         <h3 style="color:var(--brand);margin-bottom:15px;">🎨 Branding & Customization</h3>
         <div class="settings-grid">
           <div>
-            <div class="form-group">
-              <label>Hotel Name</label>
-              <input type="text" id="setting-hotel-name" placeholder="e.g., Grand Plaza Hotel">
-            </div>
-            <div class="form-group">
-              <label>Hotel Subheading</label>
-              <input type="text" id="setting-hotel-subheading" placeholder="e.g., Employee of the Month Awards">
-            </div>
+            <div class="form-group"><label>Hotel Name</label><input type="text" id="setting-hotel-name" placeholder="e.g., Grand Plaza Hotel"></div>
+            <div class="form-group"><label>Hotel Subheading</label><input type="text" id="setting-hotel-subheading" placeholder="e.g., Employee of the Month Awards"></div>
             <div class="form-group">
               <label>Hotel Logo</label>
-              <div class="file-upload" id="logo-drop">
-                <p style="font-size:2rem;"></p>
-                <p>Click to upload logo</p>
-                <input type="file" id="logo-file" accept="image/*">
-              </div>
+              <div class="file-upload" id="logo-drop"><p style="font-size:2rem;"></p><p>Click to upload logo</p><input type="file" id="logo-file" accept="image/*"></div>
               <img id="logo-preview" style="max-width:150px;margin-top:10px;border-radius:50%;display:none;">
             </div>
             <div class="form-group">
               <label>Background Image</label>
-              <div class="file-upload" id="bg-drop">
-                <p style="font-size:2rem;"></p>
-                <p>Click to upload background</p>
-                <input type="file" id="bg-file" accept="image/*">
-              </div>
+              <div class="file-upload" id="bg-drop"><p style="font-size:2rem;"></p><p>Click to upload background</p><input type="file" id="bg-file" accept="image/*"></div>
               <img id="bg-preview" style="max-width:100%;margin-top:10px;border-radius:8px;display:none;">
             </div>
             <button class="btn btn-primary" onclick="saveBranding()" style="margin-top:10px;">💾 Save Branding</button>
           </div>
-          
           <div>
             <h4 style="color:var(--brand);margin-bottom:12px;">Page Customization</h4>
-            <div class="form-group">
-              <label>Nomination Page Title</label>
-              <input type="text" id="setting-nom-title" placeholder="📝 Submit a Nomination">
-            </div>
-            <div class="form-group">
-              <label>Nomination Page Subtitle</label>
-              <textarea id="setting-nom-subtitle" placeholder="Leaders: Recognize outstanding team members..." rows="2"></textarea>
-            </div>
-            <div class="form-group">
-              <label>Voting Page Title</label>
-              <input type="text" id="setting-vote-title" placeholder="🗳️ Cast Your Vote">
-            </div>
-            <div class="form-group">
-              <label>Voting Page Subtitle</label>
-              <textarea id="setting-vote-subtitle" placeholder="Rate up to 3 unique nominees per category..." rows="2"></textarea>
-            </div>
+            <div class="form-group"><label>Nomination Page Title</label><input type="text" id="setting-nom-title" placeholder="📝 Submit a Nomination"></div>
+            <div class="form-group"><label>Nomination Page Subtitle</label><textarea id="setting-nom-subtitle" rows="2"></textarea></div>
+            <div class="form-group"><label>Voting Page Title</label><input type="text" id="setting-vote-title" placeholder="🗳️ Cast Your Vote"></div>
+            <div class="form-group"><label>Voting Page Subtitle</label><textarea id="setting-vote-subtitle" rows="2"></textarea></div>
             <button class="btn btn-primary" onclick="savePageSettings()" style="margin-top:10px;">💾 Save Page Settings</button>
           </div>
         </div>
@@ -556,14 +477,8 @@ textarea{resize:vertical;min-height:100px;}
       <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
         <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Voting Schedule Control</h3>
         <div class="settings-grid">
-          <div class="form-group">
-            <label>Voting Start Date & Time</label>
-            <input type="datetime-local" id="voting-start-time">
-          </div>
-          <div class="form-group">
-            <label>Voting End Date & Time</label>
-            <input type="datetime-local" id="voting-end-time">
-          </div>
+          <div class="form-group"><label>Voting Start Date & Time</label><input type="datetime-local" id="voting-start-time"></div>
+          <div class="form-group"><label>Voting End Date & Time</label><input type="datetime-local" id="voting-end-time"></div>
         </div>
         <button class="btn btn-primary" onclick="saveVotingSchedule()" style="margin-top:10px;">💾 Save Voting Schedule</button>
         <p style="margin-top:10px;color:#666;font-size:0.9rem;">Note: Users will only be able to cast votes within this time window. If no schedule is set, voting will be disabled.</p>
@@ -581,152 +496,65 @@ textarea{resize:vertical;min-height:100px;}
   </div>
 </div>
 
-<!-- Admin Login Modal -->
-<div id="admin-modal" class="modal">
-  <div class="modal-content">
-    <h2 style="color:var(--brand);margin-bottom:20px;">⚙️ Admin Login</h2>
-    <div class="form-group">
-      <label>Enter Password</label>
-      <input type="password" id="admin-password" placeholder="Enter admin password">
-    </div>
-    <button class="btn btn-primary btn-full" onclick="verifyAdmin()">Login</button>
-    <button class="btn btn-outline btn-full" onclick="closeAdminModal()" style="margin-top:10px;">Cancel</button>
-  </div>
-</div>
+<!-- Modals -->
+<div id="admin-modal" class="modal"><div class="modal-content">
+  <h2 style="color:var(--brand);margin-bottom:20px;">⚙️ Admin Login</h2>
+  <div class="form-group"><label>Enter Password</label><input type="password" id="admin-password" placeholder="Enter admin password"></div>
+  <button class="btn btn-primary btn-full" onclick="verifyAdmin()">Login</button>
+  <button class="btn btn-outline btn-full" onclick="closeAdminModal()" style="margin-top:10px;">Cancel</button>
+</div></div>
 
-<!-- Reset Modal -->
-<div id="reset-modal" class="modal">
-  <div class="modal-content">
-    <h2 style="color:var(--brand);margin-bottom:15px;">🔄 Reset for New Month</h2>
-    <p style="margin-bottom:15px;">This will archive current data and start fresh for the new month.</p>
-    <div class="form-group">
-      <label>New Month</label>
-      <select id="reset-month">
-        <option>January</option><option>February</option><option>March</option>
-        <option>April</option><option>May</option><option>June</option>
-        <option>July</option><option>August</option><option>September</option>
-        <option>October</option><option>November</option><option>December</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>New Year</label>
-      <select id="reset-year"></select>
-    </div>
-    <button class="btn btn-primary btn-full" onclick="confirmReset()">Archive & Reset</button>
-    <button class="btn btn-outline btn-full" onclick="closeResetModal()" style="margin-top:10px;">Cancel</button>
+<div id="reset-modal" class="modal"><div class="modal-content">
+  <h2 style="color:var(--brand);margin-bottom:15px;">🔄 Reset for New Month</h2>
+  <p style="margin-bottom:15px;">This will archive current data and start fresh for the new month.</p>
+  <div class="form-group"><label>New Month</label>
+    <select id="reset-month"><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select>
   </div>
-</div>
+  <div class="form-group"><label>New Year</label><select id="reset-year"></select></div>
+  <button class="btn btn-primary btn-full" onclick="confirmReset()">Archive & Reset</button>
+  <button class="btn btn-outline btn-full" onclick="closeResetModal()" style="margin-top:10px;">Cancel</button>
+</div></div>
 
-<!-- Edit Nomination Modal -->
-<div id="edit-nomination-modal" class="modal">
-  <div class="modal-content">
-    <h2 style="color:var(--brand);margin-bottom:20px;">✏️ Edit Nomination</h2>
-    <input type="hidden" id="edit-nom-id">
-    
-    <div class="form-group">
-      <label>Leader/Nominator Name *</label>
-      <input type="text" id="edit-nom-leader-name">
-    </div>
-    
-    <div class="form-group">
-      <label>Leader Department *</label>
-      <select id="edit-nom-leader-dept">
-        <option value="">Select Department</option>
-        <option value="Executive Office">Executive Office</option>
-        <option value="Human Resources">Human Resources</option>
-        <option value="Front Office">Front Office</option>
-        <option value="F&B Service">F&B Service</option>
-        <option value="Kitchen">Kitchen</option>
-        <option value="Kitchen Stewarding">Kitchen Stewarding</option>
-        <option value="Housekeeping & Laundry">Housekeeping & Laundry</option>
-        <option value="Security">Security</option>
-        <option value="Spa">Spa</option>
-        <option value="Sales & Marketing">Sales & Marketing</option>
-        <option value="Engineering & Landscaping">Engineering & Landscaping</option>
-        <option value="Landscaping">Landscaping</option>
-        <option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option>
-        <option value="Sustainability">Sustainability</option>
-        <option value="Reservations">Reservations</option>
-      </select>
-    </div>
-    
-    <div class="form-group">
-      <label>Nominee Full Name *</label>
-      <input type="text" id="edit-nom-name">
-    </div>
-    
-    <div class="form-group">
-      <label>Nominee Department *</label>
-      <select id="edit-nom-dept">
-        <option value="">Select Department</option>
-        <option value="Executive Office">Executive Office</option>
-        <option value="Human Resources">Human Resources</option>
-        <option value="Front Office">Front Office</option>
-        <option value="F&B Service">F&B Service</option>
-        <option value="Kitchen">Kitchen</option>
-        <option value="Kitchen Stewarding">Kitchen Stewarding</option>
-        <option value="Housekeeping & Laundry">Housekeeping & Laundry</option>
-        <option value="Security">Security</option>
-        <option value="Spa">Spa</option>
-        <option value="Sales & Marketing">Sales & Marketing</option>
-        <option value="Engineering & Landscaping">Engineering & Landscaping</option>
-        <option value="Landscaping">Landscaping</option>
-        <option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option>
-        <option value="Sustainability">Sustainability</option>
-        <option value="Reservations">Reservations</option>
-      </select>
-    </div>
-    
-    <div class="form-group">
-      <label>Award Category *</label>
-      <select id="edit-nom-category"></select>
-    </div>
-    
-    <div class="form-group">
-      <label>Reason for Nomination *</label>
-      <textarea id="edit-nom-desc" rows="4"></textarea>
-    </div>
-    
-    <div class="form-group">
-      <label>Profile Picture</label>
-      <div id="edit-pic-current" style="margin-bottom:10px;"></div>
-      <div class="file-upload" id="edit-pic-drop">
-        <p style="font-size:2.5rem;"></p>
-        <p>Click to upload/change photo</p>
-        <input type="file" id="edit-pic-file" accept="image/*">
-      </div>
-      <img id="edit-pic-preview" style="max-width:200px;margin-top:10px;border-radius:8px;display:none;">
-    </div>
-    
-    <button class="btn btn-success btn-full" onclick="saveEditedNomination()">💾 Save Changes</button>
-    <button class="btn btn-outline btn-full" onclick="closeEditNominationModal()" style="margin-top:10px;">Cancel</button>
+<div id="edit-nomination-modal" class="modal"><div class="modal-content">
+  <h2 style="color:var(--brand);margin-bottom:20px;">✏️ Edit Nomination</h2>
+  <input type="hidden" id="edit-nom-id">
+  <div class="form-group"><label>Leader/Nominator Name *</label><input type="text" id="edit-nom-leader-name"></div>
+  <div class="form-group"><label>Leader Department *</label>
+    <select id="edit-nom-leader-dept"><option value="">Select Department</option><option value="Executive Office">Executive Office</option><option value="Human Resources">Human Resources</option><option value="Front Office">Front Office</option><option value="F&B Service">F&B Service</option><option value="Kitchen">Kitchen</option><option value="Kitchen Stewarding">Kitchen Stewarding</option><option value="Housekeeping & Laundry">Housekeeping & Laundry</option><option value="Security">Security</option><option value="Spa">Spa</option><option value="Sales & Marketing">Sales & Marketing</option><option value="Engineering & Landscaping">Engineering & Landscaping</option><option value="Landscaping">Landscaping</option><option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option><option value="Sustainability">Sustainability</option><option value="Reservations">Reservations</option></select>
   </div>
-</div>
+  <div class="form-group"><label>Nominee Full Name *</label><input type="text" id="edit-nom-name"></div>
+  <div class="form-group"><label>Nominee Department *</label>
+    <select id="edit-nom-dept"><option value="">Select Department</option><option value="Executive Office">Executive Office</option><option value="Human Resources">Human Resources</option><option value="Front Office">Front Office</option><option value="F&B Service">F&B Service</option><option value="Kitchen">Kitchen</option><option value="Kitchen Stewarding">Kitchen Stewarding</option><option value="Housekeeping & Laundry">Housekeeping & Laundry</option><option value="Security">Security</option><option value="Spa">Spa</option><option value="Sales & Marketing">Sales & Marketing</option><option value="Engineering & Landscaping">Engineering & Landscaping</option><option value="Landscaping">Landscaping</option><option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option><option value="Sustainability">Sustainability</option><option value="Reservations">Reservations</option></select>
+  </div>
+  <div class="form-group"><label>Award Category *</label><select id="edit-nom-category"></select></div>
+  <div class="form-group"><label>Reason for Nomination *</label><textarea id="edit-nom-desc" rows="4"></textarea></div>
+  <div class="form-group">
+    <label>Profile Picture</label>
+    <div id="edit-pic-current" style="margin-bottom:10px;"></div>
+    <div class="file-upload" id="edit-pic-drop"><p style="font-size:2.5rem;"></p><p>Click to upload/change photo</p><input type="file" id="edit-pic-file" accept="image/*"></div>
+    <img id="edit-pic-preview" style="max-width:200px;margin-top:10px;border-radius:8px;display:none;">
+  </div>
+  <button class="btn btn-success btn-full" onclick="saveEditedNomination()">💾 Save Changes</button>
+  <button class="btn btn-outline btn-full" onclick="closeEditNominationModal()" style="margin-top:10px;">Cancel</button>
+</div></div>
 
-<!-- View/Edit Vote Modal -->
-<div id="view-vote-modal" class="modal">
-  <div class="modal-content" style="max-width:800px;">
-    <h2 style="color:var(--brand);margin-bottom:20px;">🗳️ View/Edit Vote Details</h2>
-    <input type="hidden" id="view-vote-id">
-    
-    <div style="background:#f0e8f0;padding:15px;border-radius:8px;margin-bottom:20px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div><strong>Voter Name:</strong> <span id="view-voter-name"></span></div>
-        <div><strong>Department:</strong> <span id="view-voter-dept"></span></div>
-        <div><strong>Voted At:</strong> <span id="view-vote-time"></span></div>
-      </div>
+<div id="view-vote-modal" class="modal"><div class="modal-content" style="max-width:800px;">
+  <h2 style="color:var(--brand);margin-bottom:20px;">🗳️ View/Edit Vote Details</h2>
+  <input type="hidden" id="view-vote-id">
+  <div style="background:#f0e8f0;padding:15px;border-radius:8px;margin-bottom:20px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><strong>Voter Name:</strong> <span id="view-voter-name"></span></div>
+      <div><strong>Department:</strong> <span id="view-voter-dept"></span></div>
+      <div><strong>Voted At:</strong> <span id="view-vote-time"></span></div>
     </div>
-    
-    <h3 style="color:var(--brand);margin-bottom:15px;">Ratings & Bonuses</h3>
-    <div id="view-vote-ratings"></div>
-    
-    <button class="btn btn-success btn-full" onclick="saveEditedVote()" style="margin-top:20px;">💾 Save Changes</button>
-    <button class="btn btn-outline btn-full" onclick="closeViewVoteModal()" style="margin-top:10px;">Cancel</button>
   </div>
-</div>
+  <h3 style="color:var(--brand);margin-bottom:15px;">Ratings & Bonuses</h3>
+  <div id="view-vote-ratings"></div>
+  <button class="btn btn-success btn-full" onclick="saveEditedVote()" style="margin-top:20px;">💾 Save Changes</button>
+  <button class="btn btn-outline btn-full" onclick="closeViewVoteModal()" style="margin-top:10px;">Cancel</button>
+</div></div>
 
 <script>
-// ============ FIREBASE CONFIG ============
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY_HERE",
   authDomain: "sshostrecognition.firebaseapp.com",
@@ -736,11 +564,9 @@ const firebaseConfig = {
   messagingSenderId: "717686789724",
   appId: "YOUR_APP_ID_HERE"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ============ GLOBAL STATE ============
 let nominations = [];
 let votes = {};
 let categories = [];
@@ -758,7 +584,6 @@ let currentNominationCategory = 'all';
 let currentDetailedView = 'leader';
 let detailedAnalysisData = [];
 
-// ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
   populatePeriodSelectors();
   loadBranding();
@@ -770,68 +595,36 @@ document.addEventListener('DOMContentLoaded', () => {
 function populatePeriodSelectors() {
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const currentYear = new Date().getFullYear();
-  
   const adminMonthSelect = document.getElementById('admin-period-month');
   const adminYearSelect = document.getElementById('admin-period-year');
-  months.forEach((m, i) => {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.text = m;
-    adminMonthSelect.appendChild(opt);
-  });
-  for(let i = currentYear - 1; i <= currentYear + 2; i++) {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.text = i;
-    adminYearSelect.appendChild(opt);
-  }
-  
+  months.forEach((m) => { const opt = document.createElement('option'); opt.value = m; opt.text = m; adminMonthSelect.appendChild(opt); });
+  for(let i = currentYear - 1; i <= currentYear + 2; i++) { const opt = document.createElement('option'); opt.value = i; opt.text = i; adminYearSelect.appendChild(opt); }
   const resetMonthSelect = document.getElementById('reset-month');
   const resetYearSelect = document.getElementById('reset-year');
   resetMonthSelect.selectedIndex = new Date().getMonth();
-  for(let i = currentYear - 1; i <= currentYear + 2; i++) {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.text = i;
-    if(i === currentYear) opt.selected = true;
-    resetYearSelect.appendChild(opt);
-  }
+  for(let i = currentYear - 1; i <= currentYear + 2; i++) { const opt = document.createElement('option'); opt.value = i; opt.text = i; if(i === currentYear) opt.selected = true; resetYearSelect.appendChild(opt); }
 }
 
 function loadVotingSchedule() {
   db.ref('settings/votingSchedule').once('value', snap => {
     const data = snap.val();
-    if (data) {
-      votingSchedule = data;
-      document.getElementById('voting-start-time').value = data.start || '';
-      document.getElementById('voting-end-time').value = data.end || '';
-    }
+    if (data) { votingSchedule = data; document.getElementById('voting-start-time').value = data.start || ''; document.getElementById('voting-end-time').value = data.end || ''; }
   });
 }
 
 function saveVotingSchedule() {
   const start = document.getElementById('voting-start-time').value;
   const end = document.getElementById('voting-end-time').value;
-  
   if (!start || !end) return showAlert('Please set both start and end times.', 'error');
   if (new Date(start) >= new Date(end)) return showAlert('Start time must be before end time.', 'error');
-  
-  db.ref('settings/votingSchedule').set({ start, end }).then(() => {
-    votingSchedule = { start, end };
-    showAlert('Voting schedule saved successfully!', 'success');
-  });
+  db.ref('settings/votingSchedule').set({ start, end }).then(() => { votingSchedule = { start, end }; showAlert('Voting schedule saved successfully!', 'success'); });
 }
 
 function loadCurrentPeriod() {
   db.ref('settings/currentPeriod').once('value', snap => {
     const p = snap.val();
-    if (p && p.month && p.year) {
-      currentPeriod = `${p.month} ${p.year}`;
-    } else {
-      const d = new Date();
-      currentPeriod = `${d.toLocaleString('default', {month: 'long'})} ${d.getFullYear()}`;
-    }
-    
+    if (p && p.month && p.year) currentPeriod = `${p.month} ${p.year}`;
+    else { const d = new Date(); currentPeriod = `${d.toLocaleString('default', {month: 'long'})} ${d.getFullYear()}`; }
     updatePeriodDisplay();
     loadCategoriesForPeriod();
     loadNominations();
@@ -842,13 +635,7 @@ function switchPeriod() {
   const month = document.getElementById('admin-period-month').value;
   const year = document.getElementById('admin-period-year').value;
   currentPeriod = `${month} ${year}`;
-  
-  db.ref('settings/currentPeriod').set({month, year}).then(() => {
-    updatePeriodDisplay();
-    loadCategoriesForPeriod();
-    loadAdminDashboard();
-    showAlert('Switched to ' + currentPeriod, 'success');
-  });
+  db.ref('settings/currentPeriod').set({month, year}).then(() => { updatePeriodDisplay(); loadCategoriesForPeriod(); loadAdminDashboard(); showAlert('Switched to ' + currentPeriod, 'success'); });
 }
 
 function updatePeriodDisplay() {
@@ -862,9 +649,8 @@ function loadCategoriesForPeriod() {
   const path = 'categories/' + currentPeriod.replace(' ', '_');
   db.ref(path).once('value', snap => {
     const data = snap.val();
-    if (data) {
-      categories = Object.values(data);
-    } else {
+    if (data) categories = Object.values(data);
+    else {
       categories = [
         {id: 1, name: "Host of the Month (FOH)"},
         {id: 2, name: "Host of the Month (HOH)"},
@@ -873,53 +659,42 @@ function loadCategoriesForPeriod() {
       ];
       db.ref(path).set(categories);
     }
-    
-    const catSelect = document.getElementById('nom-category');
+    const catOptions = '<option value="">-- Select Award Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    document.getElementById('nom-category').innerHTML = catOptions;
     const editCatSelect = document.getElementById('edit-nom-category');
-    const catOptions = '<option value="">-- Select Award Category --</option>' + 
-      categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    
-    catSelect.innerHTML = catOptions;
     if(editCatSelect) editCatSelect.innerHTML = catOptions;
-    
-    // Update analysis category filter
+    populateMatrixCategorySelect();
     const analysisCatFilter = document.getElementById('analysis-category-filter');
-    if(analysisCatFilter) {
-      analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + 
-        categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    }
-      
-    if(document.getElementById('tab-admin').classList.contains('active')) {
-      renderCategoryList();
-    }
+    if(analysisCatFilter) analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    if(document.getElementById('tab-admin').classList.contains('active')) renderCategoryList();
   });
+}
+
+function populateMatrixCategorySelect() {
+  const select = document.getElementById('matrix-category-select');
+  if(!select) return;
+  const current = select.value;
+  select.innerHTML = '<option value="">-- Select Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  if (current && categories.some(c => c.name === current)) select.value = current;
+  renderCategoryMatrix();
 }
 
 function addCategory() {
   const name = document.getElementById('new-category').value.trim();
   if(!name) return showAlert('Enter category name.', 'error');
   if(categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return showAlert('Category already exists.', 'error');
-  
   const newCat = {id: Date.now(), name};
   categories.push(newCat);
-  
   const path = 'categories/' + currentPeriod.replace(' ', '_');
-  const catObj = {};
-  categories.forEach(c => catObj[c.id] = c);
-  
+  const catObj = {}; categories.forEach(c => catObj[c.id] = c);
   db.ref(path).set(catObj).then(() => {
     document.getElementById('new-category').value = '';
     renderCategoryList();
-    const catSelect = document.getElementById('nom-category');
-    catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
-      categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    
+    const catOptions = '<option value="">-- Select Award Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    document.getElementById('nom-category').innerHTML = catOptions;
+    populateMatrixCategorySelect();
     const analysisCatFilter = document.getElementById('analysis-category-filter');
-    if(analysisCatFilter) {
-      analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + 
-        categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    }
-    
+    if(analysisCatFilter) analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     showAlert('Category added!', 'success');
   });
 }
@@ -927,23 +702,14 @@ function addCategory() {
 function deleteCategory(id) {
   if(!confirm('Delete this category?')) return;
   categories = categories.filter(c => c.id !== id);
-  
   const path = 'categories/' + currentPeriod.replace(' ', '_');
-  const catObj = {};
-  categories.forEach(c => catObj[c.id] = c);
-  
+  const catObj = {}; categories.forEach(c => catObj[c.id] = c);
   db.ref(path).set(catObj).then(() => {
     renderCategoryList();
-    const catSelect = document.getElementById('nom-category');
-    catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
-      categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    
+    document.getElementById('nom-category').innerHTML = '<option value="">-- Select Award Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    populateMatrixCategorySelect();
     const analysisCatFilter = document.getElementById('analysis-category-filter');
-    if(analysisCatFilter) {
-      analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + 
-        categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    }
-    
+    if(analysisCatFilter) analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     showAlert('Category deleted.', 'success');
   });
 }
@@ -953,35 +719,18 @@ function renderCategoryList() {
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#faf7fa;border-radius:6px;margin-bottom:8px;">
       <span><strong>${c.name}</strong></span>
       <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.id})">Delete</button>
-    </div>
-  `).join('');
-  
+    </div>`).join('');
   document.getElementById('stat-categories').innerText = categories.length;
 }
 
-// ============ BRANDING & SETTINGS ============
 function loadBranding() {
   db.ref('settings/branding').once('value', snap => {
     const data = snap.val();
     if(data) {
-      if(data.hotelName) {
-        document.getElementById('hotelName').innerText = data.hotelName;
-        document.getElementById('setting-hotel-name').value = data.hotelName;
-      }
-      if(data.hotelSubheading) {
-        document.getElementById('hotelSubheading').innerText = data.hotelSubheading;
-        document.getElementById('setting-hotel-subheading').value = data.hotelSubheading;
-      }
-      if(data.logo) {
-        document.getElementById('hotelLogo').innerHTML = `<img src="${data.logo}">`;
-        document.getElementById('logo-preview').src = data.logo;
-        document.getElementById('logo-preview').style.display = 'block';
-      }
-      if(data.background) {
-        document.body.style.backgroundImage = `url(${data.background})`;
-        document.getElementById('bg-preview').src = data.background;
-        document.getElementById('bg-preview').style.display = 'block';
-      }
+      if(data.hotelName) { document.getElementById('hotelName').innerText = data.hotelName; document.getElementById('setting-hotel-name').value = data.hotelName; }
+      if(data.hotelSubheading) { document.getElementById('hotelSubheading').innerText = data.hotelSubheading; document.getElementById('setting-hotel-subheading').value = data.hotelSubheading; }
+      if(data.logo) { document.getElementById('hotelLogo').innerHTML = `<img src="${data.logo}">`; document.getElementById('logo-preview').src = data.logo; document.getElementById('logo-preview').style.display = 'block'; }
+      if(data.background) { document.body.style.backgroundImage = `url(${data.background})`; document.getElementById('bg-preview').src = data.background; document.getElementById('bg-preview').style.display = 'block'; }
     }
   });
 }
@@ -994,7 +743,6 @@ function saveBranding() {
   if(hotelSubheading) branding.hotelSubheading = hotelSubheading;
   if(tempLogo) branding.logo = tempLogo;
   if(tempBg) branding.background = tempBg;
-  
   db.ref('settings/branding').update(branding).then(() => {
     if(hotelName) document.getElementById('hotelName').innerText = hotelName;
     if(hotelSubheading) document.getElementById('hotelSubheading').innerText = hotelSubheading;
@@ -1006,22 +754,10 @@ function loadPageSettings() {
   db.ref('settings/pages').once('value', snap => {
     const data = snap.val();
     if(data) {
-      if(data.nominationTitle) {
-        document.getElementById('nominationTitle').innerText = data.nominationTitle;
-        document.getElementById('setting-nom-title').value = data.nominationTitle;
-      }
-      if(data.nominationSubtitle) {
-        document.getElementById('nominationSubtitle').innerText = data.nominationSubtitle;
-        document.getElementById('setting-nom-subtitle').value = data.nominationSubtitle;
-      }
-      if(data.votingTitle) {
-        document.getElementById('votingTitle').innerText = data.votingTitle;
-        document.getElementById('setting-vote-title').value = data.votingTitle;
-      }
-      if(data.votingSubtitle) {
-        document.getElementById('votingSubtitle').innerText = data.votingSubtitle;
-        document.getElementById('setting-vote-subtitle').value = data.votingSubtitle;
-      }
+      if(data.nominationTitle) { document.getElementById('nominationTitle').innerText = data.nominationTitle; document.getElementById('setting-nom-title').value = data.nominationTitle; }
+      if(data.nominationSubtitle) { document.getElementById('nominationSubtitle').innerText = data.nominationSubtitle; document.getElementById('setting-nom-subtitle').value = data.nominationSubtitle; }
+      if(data.votingTitle) { document.getElementById('votingTitle').innerText = data.votingTitle; document.getElementById('setting-vote-title').value = data.votingTitle; }
+      if(data.votingSubtitle) { document.getElementById('votingSubtitle').innerText = data.votingSubtitle; document.getElementById('setting-vote-subtitle').value = data.votingSubtitle; }
     }
   });
 }
@@ -1042,132 +778,83 @@ function savePageSettings() {
   });
 }
 
-// ============ TAB SWITCHING ============
 function switchTab(tab, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   if(btn) btn.classList.add('active');
-  
-  if(tab === 'nominate') {
-    resetNominationForm();
-    loadCategoriesForPeriod();
-  }
-  if(tab === 'vote') {
-    checkVotingStatus();
-    loadNomineesForVoting();
-  }
-  if(tab === 'admin') {
-    loadAdminDashboard();
-    renderDetailedAnalysis();
-  }
+  if(tab === 'nominate') { resetNominationForm(); loadCategoriesForPeriod(); }
+  if(tab === 'vote') { checkVotingStatus(); loadNomineesForVoting(); }
+  if(tab === 'admin') { loadAdminDashboard(); renderDetailedAnalysis(); renderCategoryMatrix(); }
 }
 
-// ============ NOMINATION STEP FUNCTIONS ============
 function submitLeaderDetails() {
   const leaderName = document.getElementById('nom-leader-name').value.trim();
   const leaderDept = document.getElementById('nom-leader-dept').value.trim();
-  
-  if(!leaderName || !leaderDept) {
-    return showAlert('Please fill in your name and department.', 'error');
-  }
-  
+  if(!leaderName || !leaderDept) return showAlert('Please fill in your name and department.', 'error');
   currentLeader = {name: leaderName, dept: leaderDept};
-  
   document.getElementById('nomination-step-1').classList.remove('active');
   document.getElementById('nomination-step-2').classList.add('active');
-  
   loadLeaderHistory();
 }
 
 function backToStep1() {
   document.getElementById('nomination-step-2').classList.remove('active');
   document.getElementById('nomination-step-1').classList.add('active');
-  ['nom-name', 'nom-dept', 'nom-category', 'nom-desc'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  ['nom-name','nom-dept','nom-category','nom-desc'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('pic-preview').style.display = 'none';
   tempPic = '';
 }
 
 function loadLeaderHistory() {
   if(!currentLeader.name) return;
-  
   const path = 'nominations/' + currentPeriod.replace(' ', '_');
   db.ref(path).orderByChild('leaderName').equalTo(currentLeader.name).once('value', snap => {
     const myNoms = [];
     snap.forEach(child => myNoms.push({id: child.key, ...child.val()}));
-    
-    if(myNoms.length === 0) {
-      document.getElementById('leader-history-card').style.display = 'none';
-      return;
-    }
-    
+    if(myNoms.length === 0) { document.getElementById('leader-history-card').style.display = 'none'; return; }
     document.getElementById('leader-history-card').style.display = 'block';
     document.getElementById('leader-history-list').innerHTML = myNoms.map(n => `
       <div class="leader-history-item">
         <div class="leader-history-item-header">
-          <div>
-            <strong>${n.nomineeName}</strong> - ${n.category}
-            <small style="color:#666;display:block;">${n.description.substring(0, 50)}...</small>
-          </div>
+          <div><strong>${n.nomineeName}</strong> - ${n.category}<small style="color:#666;display:block;">${n.description.substring(0, 50)}...</small></div>
           <div class="leader-history-item-actions">
             <button class="btn btn-warning btn-sm" onclick="editLeaderNomination('${n.id}')">️ Edit</button>
             <button class="btn btn-danger btn-sm" onclick="deleteMyNomination('${n.id}')">🗑️ Delete</button>
           </div>
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
   });
 }
 
 function addNewNomination() {
-  ['nom-name', 'nom-dept', 'nom-category', 'nom-desc'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  ['nom-name','nom-dept','nom-category','nom-desc'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('pic-preview').style.display = 'none';
   tempPic = '';
-  
   document.getElementById('nomination-step-1').classList.remove('active');
   document.getElementById('nomination-step-2').classList.add('active');
   document.getElementById('leader-history-card').style.display = 'none';
 }
 
-function editLeaderNomination(nomId) {
-  editNomination(nomId);
-}
+function editLeaderNomination(nomId) { editNomination(nomId); }
 
 function resetNominationForm() {
   document.getElementById('nomination-step-1').classList.add('active');
   document.getElementById('nomination-step-2').classList.remove('active');
   document.getElementById('leader-history-card').style.display = 'none';
-  ['nom-leader-name', 'nom-leader-dept', 'nom-name', 'nom-dept', 'nom-category', 'nom-desc'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  ['nom-leader-name','nom-leader-dept','nom-name','nom-dept','nom-category','nom-desc'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('pic-preview').style.display = 'none';
   tempPic = '';
   currentLeader = {name: '', dept: ''};
 }
 
-// ============ ADMIN FUNCTIONS ============
-function showAdminLogin() {
-  document.getElementById('admin-modal').classList.add('active');
-}
-
-function closeAdminModal() {
-  document.getElementById('admin-modal').classList.remove('active');
-  document.getElementById('admin-password').value = '';
-}
+function showAdminLogin() { document.getElementById('admin-modal').classList.add('active'); }
+function closeAdminModal() { document.getElementById('admin-modal').classList.remove('active'); document.getElementById('admin-password').value = ''; }
 
 function verifyAdmin() {
   const password = document.getElementById('admin-password').value;
-  if(password === 'Admin@2026') {
-    closeAdminModal();
-    switchTab('admin', document.querySelectorAll('.nav-btn')[2]);
-    loadAdminDashboard();
-  } else {
-    showAlert('Invalid password!', 'error');
-  }
+  if(password === 'Admin@2026') { closeAdminModal(); switchTab('admin', document.querySelectorAll('.nav-btn')[2]); loadAdminDashboard(); }
+  else showAlert('Invalid password!', 'error');
 }
 
 function loadAdminDashboard() {
@@ -1178,21 +865,18 @@ function loadAdminDashboard() {
     currentNominationCategory = 'all';
     renderNominationCategoryTabs();
     renderAdminNominations();
-    renderDetailedAnalysis();
+    renderCategoryMatrix();
   });
-  
   const votesPath = 'votes/' + currentPeriod.replace(' ', '_');
   db.ref(votesPath).on('value', snap => {
     votes = snap.val() || {};
-    const voteCount = Object.keys(votes).length;
-    const uniqueVoters = new Set(Object.values(votes).map(v => v.voterName)).size;
-    document.getElementById('stat-votes').innerText = voteCount;
-    document.getElementById('stat-voters').innerText = uniqueVoters;
+    document.getElementById('stat-votes').innerText = Object.keys(votes).length;
+    document.getElementById('stat-voters').innerText = new Set(Object.values(votes).map(v => v.voterName)).size;
     renderAdminResults();
     renderAdminVotes();
     renderDetailedAnalysis();
+    renderCategoryMatrix();
   });
-  
   renderCategoryList();
 }
 
@@ -1211,46 +895,25 @@ function filterNominationsByCategory(category, btn) {
 function renderAdminNominations() {
   const container = document.getElementById('admin-nominations');
   let filteredNominations = nominations;
-  
-  if(currentNominationCategory !== 'all') {
-    filteredNominations = nominations.filter(n => n.category === currentNominationCategory);
-  }
-  
-  if(filteredNominations.length === 0) {
-    container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No nominations found.</p>';
-    return;
-  }
-  
+  if(currentNominationCategory !== 'all') filteredNominations = nominations.filter(n => n.category === currentNominationCategory);
+  if(filteredNominations.length === 0) { container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No nominations found.</p>'; return; }
   const nomineeCatCounts = {};
-  nominations.forEach(n => {
-    const key = n.nomineeName.toLowerCase().trim() + '_' + n.category;
-    nomineeCatCounts[key] = (nomineeCatCounts[key] || 0) + 1;
-  });
-  
+  nominations.forEach(n => { const key = n.nomineeName.toLowerCase().trim() + '_' + n.category; nomineeCatCounts[key] = (nomineeCatCounts[key] || 0) + 1; });
   const bonusNominees = new Set();
-  
   container.innerHTML = filteredNominations.map(n => {
     const key = n.nomineeName.toLowerCase().trim() + '_' + n.category;
     const isDuplicate = nomineeCatCounts[key] > 1;
     const currentBonus = n.adminBonus || 0;
-    
     let bonusHtml = '';
     if (isDuplicate) {
-        if (!bonusNominees.has(key)) {
-            bonusNominees.add(key);
-            bonusHtml = `
-              <div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#fff; padding:8px; border-radius:6px; border:1px solid var(--border);">
-                <label style="font-size:0.85rem; font-weight:bold; color:var(--brand); margin:0; white-space:nowrap;">⭐ Admin Bonus:</label>
-                <input type="number" min="0" value="${currentBonus}" 
-                       onchange="updateAdminBonus('${n.id}', this.value, '${key}')" 
-                       style="width:70px; padding:6px; border:2px solid var(--brand-light); border-radius:4px; text-align:center; font-weight:bold;">
-              </div>
-            `;
-        } else {
-            bonusHtml = '';
-        }
+      if (!bonusNominees.has(key)) {
+        bonusNominees.add(key);
+        bonusHtml = `<div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#fff; padding:8px; border-radius:6px; border:1px solid var(--border);">
+          <label style="font-size:0.85rem; font-weight:bold; color:var(--brand); margin:0; white-space:nowrap;">⭐ Admin Bonus:</label>
+          <input type="number" min="0" value="${currentBonus}" onchange="updateAdminBonus('${n.id}', this.value, '${key}')" style="width:70px; padding:6px; border:2px solid var(--brand-light); border-radius:4px; text-align:center; font-weight:bold;">
+        </div>`;
+      }
     }
-    
     return `
     <div style="display:flex;gap:12px;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);">
       ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;">👤</div>'}
@@ -1259,105 +922,156 @@ function renderAdminNominations() {
         <small style="color:#666;display:block;">${n.nomineeDept} • ${n.category}</small>
         <small style="color:#888;display:block;">By: ${n.leaderName} (${n.leaderDept})</small>
         <small style="font-style:italic;color:#555;display:block;">"${n.description.substring(0, 60)}${n.description.length > 60 ? '...' : ''}"</small>
-        
         ${bonusHtml}
       </div>
       <div style="display:flex;gap:5px;flex-direction:column;">
         <button class="btn btn-warning btn-sm" onclick="editNomination('${n.id}')">✏️ Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteNomination('${n.id}')">🗑️ Delete</button>
       </div>
-    </div>
-  `}).join('');
+    </div>`;
+  }).join('');
 }
 
 function updateAdminBonus(nomId, value, key) {
   const bonus = parseInt(value) || 0;
-  
   const relatedNoms = nominations.filter(n => (n.nomineeName.toLowerCase().trim() + '_' + n.category) === key);
-  
   const updates = {};
-  relatedNoms.forEach(n => {
-    if (n.id === nomId) {
-      updates[n.id + '/adminBonus'] = bonus; 
-    } else {
-      updates[n.id + '/adminBonus'] = null;  
-    }
-  });
-  
+  relatedNoms.forEach(n => { if (n.id === nomId) updates[n.id + '/adminBonus'] = bonus; else updates[n.id + '/adminBonus'] = null; });
   const basePath = 'nominations/' + currentPeriod.replace(' ', '_');
-  
   db.ref(basePath).update(updates).then(() => {
     showAlert('Admin bonus updated for primary profile! Duplicates marked as null.', 'success');
-    relatedNoms.forEach(n => {
-      if (n.id === nomId) n.adminBonus = bonus;
-      else n.adminBonus = null;
-    });
-    
+    relatedNoms.forEach(n => { if (n.id === nomId) n.adminBonus = bonus; else n.adminBonus = null; });
     renderAdminNominations();
-    
     const activeTab = document.querySelector('#admin-cat-tabs .cat-tab.active');
-    if(activeTab) {
-      showAdminCategory(activeTab.textContent, activeTab);
-    }
+    if(activeTab) showAdminCategory(activeTab.textContent, activeTab);
+    renderCategoryMatrix();
   }).catch(err => showAlert('Error updating bonus: ' + err.message, 'error'));
 }
 
 function renderAdminResults() {
   document.getElementById('admin-cat-tabs').innerHTML = categories.map((c, i) => 
-    `<button class="cat-tab ${i === 0 ? 'active' : ''}" onclick="showAdminCategory('${c.name}', this)">${c.name}</button>`
-  ).join('');
-  
-  if(categories.length > 0) {
-    showAdminCategory(categories[0].name, document.querySelector('#admin-cat-tabs .cat-tab'));
-  }
+    `<button class="cat-tab ${i === 0 ? 'active' : ''}" onclick="showAdminCategory('${c.name}', this)">${c.name}</button>`).join('');
+  if(categories.length > 0) showAdminCategory(categories[0].name, document.querySelector('#admin-cat-tabs .cat-tab'));
 }
 
 function showAdminCategory(catName, btn) {
   document.querySelectorAll('#admin-cat-tabs .cat-tab').forEach(t => t.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  
   const noms = nominations.filter(n => n.category === catName);
-  
   let results = noms.map(n => {
-    let totalScore = 0;
+    let votesTotal = 0;   // SUM of ratings from leaders (total votes received)
     let voteCount = 0;
-    let totalBonus = parseInt(n.adminBonus) || 0; 
-    
+    let totalBonus = parseInt(n.adminBonus) || 0;
     Object.values(votes).forEach(v => {
       const rating = v.ratings && v.ratings[catName] ? v.ratings[catName][n.id] : null;
       const voteBonus = v.bonuses && v.bonuses[catName] ? v.bonuses[catName][n.id] : 0;
-      
-      if(rating) { 
-        totalScore += parseInt(rating); 
-        voteCount++; 
-      }
-      if(voteBonus) {
-        totalBonus += parseInt(voteBonus);
-      }
+      if(rating) { votesTotal += parseInt(rating); voteCount++; }
+      if(voteBonus) totalBonus += parseInt(voteBonus);
     });
-    
-    return { ...n, totalScore: totalScore + totalBonus, count: voteCount, bonus: totalBonus };
-  }).sort((a, b) => b.totalScore - a.totalScore);
-  
-  const top = results[0]?.totalScore || 0;
-  
+    return { ...n, votesTotal, voteCount, bonus: totalBonus, grandTotal: votesTotal + totalBonus };
+  }).sort((a, b) => b.grandTotal - a.grandTotal);
+  const top = results[0]?.grandTotal || 0;
   document.getElementById('admin-results').innerHTML = results.length === 0 
     ? '<p style="color:#999;text-align:center;padding:20px;">No nominations in this category.</p>'
     : `<table class="data-table">
         <thead><tr><th>Rank</th><th>Name</th><th>Department</th><th>Votes from Leaders</th><th>Bonus Points</th><th>Grand Total</th></tr></thead>
         <tbody>
           ${results.map((r, i) => `
-            <tr class="${r.totalScore === top && r.totalScore > 0 ? 'winner' : ''}">
-              <td>${i + 1} ${r.totalScore === top && r.totalScore > 0 ? '🏆' : ''}</td>
+            <tr class="${r.grandTotal === top && r.grandTotal > 0 ? 'winner' : ''}">
+              <td>${i + 1} ${r.grandTotal === top && r.grandTotal > 0 ? '🏆' : ''}</td>
               <td>${r.nomineeName}</td>
               <td>${r.nomineeDept}</td>
-              <td>${r.count}</td>
+              <td>${r.votesTotal}</td>
               <td>${r.bonus > 0 ? '+' + r.bonus : 0}</td>
-              <td><strong>${r.totalScore}</strong></td>
-            </tr>
-          `).join('')}
+              <td><strong>${r.grandTotal}</strong></td>
+            </tr>`).join('')}
         </tbody>
       </table>`;
+}
+
+// ============ CATEGORY SUMMARY MATRIX (Leader-wise) ============
+function buildCategoryMatrix(catName) {
+  const noms = nominations.filter(n => n.category === catName);
+  const voteByLeader = {};
+  Object.values(votes).forEach(v => {
+    if (!v || !v.voterName) return;
+    const existing = voteByLeader[v.voterName];
+    if (!existing || ((v.timestamp || 0) > (existing.timestamp || 0))) voteByLeader[v.voterName] = v;
+  });
+  const leaders = Object.keys(voteByLeader).filter(leader => {
+    const v = voteByLeader[leader];
+    return v.ratings && v.ratings[catName] && Object.values(v.ratings[catName]).some(r => parseInt(r) > 0);
+  }).sort((a,b) => a.localeCompare(b));
+  const rows = noms.map(n => {
+    let leaderTotal = 0;
+    const cells = leaders.map(leader => {
+      const v = voteByLeader[leader];
+      const rating = (v.ratings && v.ratings[catName] && v.ratings[catName][n.id]) ? parseInt(v.ratings[catName][n.id]) : 0;
+      leaderTotal += rating || 0;
+      return rating > 0 ? rating : '';
+    });
+    const bonus = parseInt(n.adminBonus) || 0;
+    return { nominee: n, cells, leaderTotal, bonus, total: leaderTotal + bonus };
+  }).sort((a,b) => b.total - a.total);
+  return { leaders, rows };
+}
+
+function renderCategoryMatrix() {
+  const select = document.getElementById('matrix-category-select');
+  const container = document.getElementById('matrix-table-container');
+  if(!select || !container) return;
+  const catName = select.value;
+  if(!catName) { container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">Select a category to view the summary matrix.</p>'; return; }
+  const { leaders, rows } = buildCategoryMatrix(catName);
+  if(rows.length === 0) { container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No nominations in this category.</p>'; return; }
+  container.innerHTML = `
+    <table class="data-table">
+      <thead><tr>
+        <th>Nominee</th>
+        ${leaders.map(l => `<th>${l}</th>`).join('')}
+        <th>Bonus Point</th>
+        <th>Total</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r, i) => `
+          <tr class="${i === 0 && r.total > 0 ? 'winner' : ''}">
+            <td><strong>${r.nominee.nomineeName}</strong><br><small style="color:#666;">${r.nominee.nomineeDept}</small></td>
+            ${r.cells.map(c => `<td>${c === '' ? '-' : c}</td>`).join('')}
+            <td>${r.bonus > 0 ? '+' + r.bonus : 0}</td>
+            <td><strong>${r.total}</strong></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function downloadMatrixPDF() {
+  const select = document.getElementById('matrix-category-select');
+  const catName = select ? select.value : '';
+  if(!catName) return showAlert('Please select a category first.', 'error');
+  const { leaders, rows } = buildCategoryMatrix(catName);
+  if(rows.length === 0) return showAlert('No nominations in this category.', 'error');
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(16); doc.setTextColor(109, 48, 99);
+    doc.text(`Category Summary: ${catName}`, 14, 15);
+    doc.setFontSize(10); doc.setTextColor(100, 100, 100);
+    doc.text(`Period: ${currentPeriod}   |   Generated: ${new Date().toLocaleString()}`, 14, 22);
+    const head = [['Nominee', ...leaders, 'Bonus Point', 'Total']];
+    const body = rows.map(r => [ r.nominee.nomineeName, ...r.cells.map(c => c === '' ? '-' : String(c)), String(r.bonus), String(r.total) ]);
+    if (typeof doc.autoTable === 'function') {
+      doc.autoTable({ head: head, body: body, startY: 28, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [109, 48, 99], textColor: 255 }, alternateRowStyles: { fillColor: [250, 247, 250] } });
+    } else {
+      let y = 30; doc.setFontSize(8); doc.setTextColor(0,0,0);
+      doc.text(head[0].join('  |  '), 10, y); y += 6;
+      body.forEach(row => { if (y > 200) { doc.addPage(); y = 15; } doc.text(row.join('  |  '), 10, y); y += 6; });
+    }
+    doc.save(`Category_Summary_${catName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    showAlert('Category summary PDF downloaded!', 'success');
+  } catch (e) {
+    console.error('Matrix PDF error:', e);
+    showAlert('Failed to generate PDF: ' + e.message, 'error');
+  }
 }
 
 // ============ DETAILED VOTING ANALYSIS ============
@@ -1372,51 +1086,20 @@ function renderDetailedAnalysis() {
   const categoryFilter = document.getElementById('analysis-category-filter').value;
   const searchTerm = document.getElementById('analysis-search').value.toLowerCase();
   const sortBy = document.getElementById('analysis-sort').value;
-  
-  // Build detailed analysis data
   detailedAnalysisData = [];
-  
   Object.entries(votes).forEach(([voteId, vote]) => {
     Object.entries(vote.ratings || {}).forEach(([catName, ratings]) => {
       Object.entries(ratings).forEach(([nomId, rating]) => {
         const nominee = nominations.find(n => n.id === nomId);
         if(!nominee) return;
-        
         const bonus = vote.bonuses && vote.bonuses[catName] ? (vote.bonuses[catName][nomId] || 0) : 0;
-        
-        detailedAnalysisData.push({
-          voteId,
-          voterName: vote.voterName || 'Unknown',
-          voterDept: vote.voterDept || 'N/A',
-          nomineeName: nominee.nomineeName,
-          nomineeDept: nominee.nomineeDept,
-          category: catName,
-          rating: parseInt(rating) || 0,
-          bonus: parseInt(bonus) || 0,
-          totalScore: (parseInt(rating) || 0) + (parseInt(bonus) || 0),
-          timestamp: vote.timestamp ? new Date(vote.timestamp) : new Date()
-        });
+        detailedAnalysisData.push({ voteId, voterName: vote.voterName || 'Unknown', voterDept: vote.voterDept || 'N/A', nomineeName: nominee.nomineeName, nomineeDept: nominee.nomineeDept, category: catName, rating: parseInt(rating) || 0, bonus: parseInt(bonus) || 0, totalScore: (parseInt(rating) || 0) + (parseInt(bonus) || 0), timestamp: vote.timestamp ? new Date(vote.timestamp) : new Date() });
       });
     });
   });
-  
-  // Apply filters
   let filteredData = detailedAnalysisData;
-  
-  if(categoryFilter !== 'all') {
-    filteredData = filteredData.filter(d => d.category === categoryFilter);
-  }
-  
-  if(searchTerm) {
-    filteredData = filteredData.filter(d => 
-      d.voterName.toLowerCase().includes(searchTerm) ||
-      d.nomineeName.toLowerCase().includes(searchTerm) ||
-      d.voterDept.toLowerCase().includes(searchTerm) ||
-      d.nomineeDept.toLowerCase().includes(searchTerm)
-    );
-  }
-  
-  // Apply sorting
+  if(categoryFilter !== 'all') filteredData = filteredData.filter(d => d.category === categoryFilter);
+  if(searchTerm) filteredData = filteredData.filter(d => d.voterName.toLowerCase().includes(searchTerm) || d.nomineeName.toLowerCase().includes(searchTerm) || d.voterDept.toLowerCase().includes(searchTerm) || d.nomineeDept.toLowerCase().includes(searchTerm));
   filteredData.sort((a, b) => {
     switch(sortBy) {
       case 'timestamp-desc': return b.timestamp - a.timestamp;
@@ -1428,431 +1111,191 @@ function renderDetailedAnalysis() {
       default: return 0;
     }
   });
-  
-  // Render summary
-  const summaryHtml = `
-    <div class="summary-card">
-      <div class="summary-value">${filteredData.length}</div>
-      <div class="summary-label">Total Votes</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-value">${new Set(filteredData.map(d => d.voterName)).size}</div>
-      <div class="summary-label">Unique Leaders</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-value">${new Set(filteredData.map(d => d.nomineeName)).size}</div>
-      <div class="summary-label">Unique Nominees</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-value">${filteredData.reduce((sum, d) => sum + d.totalScore, 0)}</div>
-      <div class="summary-label">Total Points Awarded</div>
-    </div>
-  `;
-  document.getElementById('analysis-summary').innerHTML = summaryHtml;
-  
-  // Render table
+  document.getElementById('analysis-summary').innerHTML = `
+    <div class="summary-card"><div class="summary-value">${filteredData.length}</div><div class="summary-label">Total Votes</div></div>
+    <div class="summary-card"><div class="summary-value">${new Set(filteredData.map(d => d.voterName)).size}</div><div class="summary-label">Unique Leaders</div></div>
+    <div class="summary-card"><div class="summary-value">${new Set(filteredData.map(d => d.nomineeName)).size}</div><div class="summary-label">Unique Nominees</div></div>
+    <div class="summary-card"><div class="summary-value">${filteredData.reduce((sum, d) => sum + d.totalScore, 0)}</div><div class="summary-label">Total Points Awarded</div></div>`;
   const tableHead = document.getElementById('detailed-table-head');
   const tableBody = document.getElementById('detailed-table-body');
-  
   if(currentDetailedView === 'leader') {
-    tableHead.innerHTML = `
-      <tr>
-        <th>Leader Name</th>
-        <th>Department</th>
-        <th>Nominee Voted For</th>
-        <th>Nominee Dept</th>
-        <th>Category</th>
-        <th>Rating</th>
-        <th>Bonus</th>
-        <th>Total</th>
-        <th>Voted At</th>
-      </tr>
-    `;
-    
-    tableBody.innerHTML = filteredData.length === 0 
-      ? '<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">No voting data found.</td></tr>'
-      : filteredData.map(d => `
-        <tr>
-          <td><strong>${d.voterName}</strong></td>
-          <td>${d.voterDept}</td>
-          <td>${d.nomineeName}</td>
-          <td>${d.nomineeDept}</td>
-          <td>${d.category}</td>
-          <td><span class="rating-badge rating-${d.rating}">${d.rating}</span></td>
-          <td>${d.bonus > 0 ? `<span class="bonus-badge">+${d.bonus}</span>` : '0'}</td>
-          <td><strong>${d.totalScore}</strong></td>
-          <td>${d.timestamp.toLocaleString()}</td>
-        </tr>
-      `).join('');
+    tableHead.innerHTML = `<tr><th>Leader Name</th><th>Department</th><th>Nominee Voted For</th><th>Nominee Dept</th><th>Category</th><th>Rating</th><th>Bonus</th><th>Total</th><th>Voted At</th></tr>`;
+    tableBody.innerHTML = filteredData.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">No voting data found.</td></tr>' : filteredData.map(d => `
+      <tr><td><strong>${d.voterName}</strong></td><td>${d.voterDept}</td><td>${d.nomineeName}</td><td>${d.nomineeDept}</td><td>${d.category}</td><td><span class="rating-badge rating-${d.rating}">${d.rating}</span></td><td>${d.bonus > 0 ? `<span class="bonus-badge">+${d.bonus}</span>` : '0'}</td><td><strong>${d.totalScore}</strong></td><td>${d.timestamp.toLocaleString()}</td></tr>`).join('');
   } else {
-    // Nominee-wise view
-    tableHead.innerHTML = `
-      <tr>
-        <th>Nominee Name</th>
-        <th>Nominee Dept</th>
-        <th>Category</th>
-        <th>Leader Who Voted</th>
-        <th>Leader Dept</th>
-        <th>Rating</th>
-        <th>Bonus</th>
-        <th>Total</th>
-        <th>Voted At</th>
-      </tr>
-    `;
-    
-    tableBody.innerHTML = filteredData.length === 0 
-      ? '<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">No voting data found.</td></tr>'
-      : filteredData.map(d => `
-        <tr>
-          <td><strong>${d.nomineeName}</strong></td>
-          <td>${d.nomineeDept}</td>
-          <td>${d.category}</td>
-          <td>${d.voterName}</td>
-          <td>${d.voterDept}</td>
-          <td><span class="rating-badge rating-${d.rating}">${d.rating}</span></td>
-          <td>${d.bonus > 0 ? `<span class="bonus-badge">+${d.bonus}</span>` : '0'}</td>
-          <td><strong>${d.totalScore}</strong></td>
-          <td>${d.timestamp.toLocaleString()}</td>
-        </tr>
-      `).join('');
+    tableHead.innerHTML = `<tr><th>Nominee Name</th><th>Nominee Dept</th><th>Category</th><th>Leader Who Voted</th><th>Leader Dept</th><th>Rating</th><th>Bonus</th><th>Total</th><th>Voted At</th></tr>`;
+    tableBody.innerHTML = filteredData.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">No voting data found.</td></tr>' : filteredData.map(d => `
+      <tr><td><strong>${d.nomineeName}</strong></td><td>${d.nomineeDept}</td><td>${d.category}</td><td>${d.voterName}</td><td>${d.voterDept}</td><td><span class="rating-badge rating-${d.rating}">${d.rating}</span></td><td>${d.bonus > 0 ? `<span class="bonus-badge">+${d.bonus}</span>` : '0'}</td><td><strong>${d.totalScore}</strong></td><td>${d.timestamp.toLocaleString()}</td></tr>`).join('');
   }
 }
 
 function downloadDetailedExcel() {
   try {
-    if (typeof XLSX === 'undefined') {
-      showAlert('Excel library not loaded.', 'error');
-      return;
-    }
-    
+    if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded.', 'error'); return; }
     const wb = XLSX.utils.book_new();
-    
     const exportData = detailedAnalysisData.map(d => ({
       'View Type': currentDetailedView === 'leader' ? 'Leader-wise' : 'Nominee-wise',
-      'Leader Name': d.voterName,
-      'Leader Department': d.voterDept,
-      'Nominee Name': d.nomineeName,
-      'Nominee Department': d.nomineeDept,
-      'Category': d.category,
-      'Rating': d.rating,
-      'Bonus Points': d.bonus,
-      'Total Score': d.totalScore,
-      'Voted At': d.timestamp.toLocaleString()
+      'Leader Name': d.voterName, 'Leader Department': d.voterDept,
+      'Nominee Name': d.nomineeName, 'Nominee Department': d.nomineeDept,
+      'Category': d.category, 'Rating': d.rating, 'Bonus Points': d.bonus, 'Total Score': d.totalScore, 'Voted At': d.timestamp.toLocaleString()
     }));
-    
     const ws = XLSX.utils.json_to_sheet(exportData);
     XLSX.utils.book_append_sheet(wb, ws, 'Detailed Voting Analysis');
-    
-    const fileName = `Detailed_Voting_Analysis_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}_${currentDetailedView}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    XLSX.writeFile(wb, `Detailed_Voting_Analysis_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}_${currentDetailedView}.xlsx`);
     showAlert('Detailed Excel report downloaded successfully!', 'success');
-  } catch (error) {
-    console.error('Excel export error:', error);
-    showAlert('Failed to export Excel: ' + error.message, 'error');
-  }
+  } catch (error) { console.error('Excel export error:', error); showAlert('Failed to export Excel: ' + error.message, 'error'); }
 }
 
 function downloadDetailedPDF() {
   try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
-    doc.setFontSize(18);
-    doc.text(`Detailed Voting Analysis - ${currentPeriod}`, 105, 15, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`View: ${currentDetailedView === 'leader' ? 'Leader-wise' : 'Nominee-wise'}`, 105, 25, { align: 'center' });
+    doc.setFontSize(18); doc.text(`Detailed Voting Analysis - ${currentPeriod}`, 105, 15, { align: 'center' });
+    doc.setFontSize(12); doc.text(`View: ${currentDetailedView === 'leader' ? 'Leader-wise' : 'Nominee-wise'}`, 105, 25, { align: 'center' });
     doc.text(`Generated: ${new Date().toLocaleString()}`, 105, 32, { align: 'center' });
-    
     let yPos = 45;
-    
-    doc.setFontSize(10);
-    doc.text(`Total Records: ${detailedAnalysisData.length}`, 14, yPos);
-    yPos += 8;
-    
-    // Table headers
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    if(currentDetailedView === 'leader') {
-      doc.text('Leader', 14, yPos);
-      doc.text('Dept', 50, yPos);
-      doc.text('Nominee', 80, yPos);
-      doc.text('Category', 115, yPos);
-      doc.text('Rating', 150, yPos);
-      doc.text('Bonus', 165, yPos);
-      doc.text('Total', 180, yPos);
-    } else {
-      doc.text('Nominee', 14, yPos);
-      doc.text('Dept', 50, yPos);
-      doc.text('Leader', 80, yPos);
-      doc.text('Category', 115, yPos);
-      doc.text('Rating', 150, yPos);
-      doc.text('Bonus', 165, yPos);
-      doc.text('Total', 180, yPos);
-    }
-    yPos += 5;
-    doc.line(14, yPos, 196, yPos);
-    yPos += 5;
-    
+    doc.setFontSize(10); doc.text(`Total Records: ${detailedAnalysisData.length}`, 14, yPos); yPos += 8;
+    doc.setFontSize(9); doc.setFont(undefined, 'bold');
+    if(currentDetailedView === 'leader') { doc.text('Leader', 14, yPos); doc.text('Dept', 50, yPos); doc.text('Nominee', 80, yPos); doc.text('Category', 115, yPos); doc.text('Rating', 150, yPos); doc.text('Bonus', 165, yPos); doc.text('Total', 180, yPos); }
+    else { doc.text('Nominee', 14, yPos); doc.text('Dept', 50, yPos); doc.text('Leader', 80, yPos); doc.text('Category', 115, yPos); doc.text('Rating', 150, yPos); doc.text('Bonus', 165, yPos); doc.text('Total', 180, yPos); }
+    yPos += 5; doc.line(14, yPos, 196, yPos); yPos += 5;
     doc.setFont(undefined, 'normal');
-    
-    detailedAnalysisData.forEach((d, index) => {
-      if (yPos > 270) {
-        doc.addPage();
-        yPos = 15;
-      }
-      
-      if(currentDetailedView === 'leader') {
-        doc.text(d.voterName.substring(0, 20), 14, yPos);
-        doc.text(d.voterDept.substring(0, 15), 50, yPos);
-        doc.text(d.nomineeName.substring(0, 18), 80, yPos);
-        doc.text(d.category.substring(0, 18), 115, yPos);
-        doc.text(String(d.rating), 150, yPos);
-        doc.text(String(d.bonus), 165, yPos);
-        doc.text(String(d.totalScore), 180, yPos);
-      } else {
-        doc.text(d.nomineeName.substring(0, 20), 14, yPos);
-        doc.text(d.nomineeDept.substring(0, 15), 50, yPos);
-        doc.text(d.voterName.substring(0, 18), 80, yPos);
-        doc.text(d.category.substring(0, 18), 115, yPos);
-        doc.text(String(d.rating), 150, yPos);
-        doc.text(String(d.bonus), 165, yPos);
-        doc.text(String(d.totalScore), 180, yPos);
-      }
-      
+    detailedAnalysisData.forEach((d) => {
+      if (yPos > 270) { doc.addPage(); yPos = 15; }
+      if(currentDetailedView === 'leader') { doc.text(d.voterName.substring(0, 20), 14, yPos); doc.text(d.voterDept.substring(0, 15), 50, yPos); doc.text(d.nomineeName.substring(0, 18), 80, yPos); doc.text(d.category.substring(0, 18), 115, yPos); doc.text(String(d.rating), 150, yPos); doc.text(String(d.bonus), 165, yPos); doc.text(String(d.totalScore), 180, yPos); }
+      else { doc.text(d.nomineeName.substring(0, 20), 14, yPos); doc.text(d.nomineeDept.substring(0, 15), 50, yPos); doc.text(d.voterName.substring(0, 18), 80, yPos); doc.text(d.category.substring(0, 18), 115, yPos); doc.text(String(d.rating), 150, yPos); doc.text(String(d.bonus), 165, yPos); doc.text(String(d.totalScore), 180, yPos); }
       yPos += 6;
     });
-    
-    const fileName = `Detailed_Voting_Analysis_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}_${currentDetailedView}.pdf`;
-    doc.save(fileName);
+    doc.save(`Detailed_Voting_Analysis_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}_${currentDetailedView}.pdf`);
     showAlert('Detailed PDF report downloaded successfully!', 'success');
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    showAlert('Failed to generate PDF: ' + error.message, 'error');
-  }
+  } catch (error) { console.error('PDF generation error:', error); showAlert('Failed to generate PDF: ' + error.message, 'error'); }
 }
 
 function printDetailedAnalysis() {
   const printWindow = window.open('', '_blank');
   const tableHtml = document.getElementById('detailed-analysis-table').outerHTML;
   const summaryHtml = document.getElementById('analysis-summary').innerHTML;
-  
-  printWindow.document.write(`
-    <html>
-    <head>
-      <title>Detailed Voting Analysis - ${currentPeriod}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { color: #6d3063; }
-        .summary-card { display: inline-block; padding: 15px; margin: 10px; background: #f5eef5; border-radius: 8px; text-align: center; }
-        .summary-value { font-size: 24px; font-weight: bold; color: #6d3063; }
-        .summary-label { font-size: 12px; color: #666; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-        th { background: #6d3063; color: white; }
-        .rating-badge { padding: 2px 6px; border-radius: 3px; font-weight: bold; }
-        .rating-3 { background: #d4edda; }
-        .rating-2 { background: #fff3cd; }
-        .rating-1 { background: #f8d7da; }
-      </style>
-    </head>
-    <body>
-      <h1>Detailed Voting Analysis - ${currentPeriod}</h1>
-      <p>View: ${currentDetailedView === 'leader' ? 'Leader-wise' : 'Nominee-wise'}</p>
-      <p>Generated: ${new Date().toLocaleString()}</p>
-      <div>${summaryHtml}</div>
-      ${tableHtml}
-    </body>
-    </html>
-  `);
+  printWindow.document.write(`<html><head><title>Detailed Voting Analysis - ${currentPeriod}</title><style>
+    body { font-family: Arial, sans-serif; padding: 20px; } h1 { color: #6d3063; }
+    .summary-card { display: inline-block; padding: 15px; margin: 10px; background: #f5eef5; border-radius: 8px; text-align: center; }
+    .summary-value { font-size: 24px; font-weight: bold; color: #6d3063; } .summary-label { font-size: 12px; color: #666; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; } th, td { padding: 8px; border: 1px solid #ddd; text-align: left; } th { background: #6d3063; color: white; }
+    .rating-badge { padding: 2px 6px; border-radius: 3px; font-weight: bold; } .rating-3 { background: #d4edda; } .rating-2 { background: #fff3cd; } .rating-1 { background: #f8d7da; }
+  </style></head><body>
+  <h1>Detailed Voting Analysis - ${currentPeriod}</h1>
+  <p>View: ${currentDetailedView === 'leader' ? 'Leader-wise' : 'Nominee-wise'}</p>
+  <p>Generated: ${new Date().toLocaleString()}</p>
+  <div>${summaryHtml}</div>${tableHtml}</body></html>`);
   printWindow.document.close();
-  setTimeout(() => {
-    printWindow.print();
-  }, 500);
+  setTimeout(() => printWindow.print(), 500);
 }
 
 // ============ VOTE MANAGEMENT ============
 function renderAdminVotes() {
   const container = document.getElementById('admin-votes-list');
   const voteEntries = Object.entries(votes);
-  
-  if(voteEntries.length === 0) {
-    container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No votes cast yet.</p>';
-    return;
-  }
-  
+  if(voteEntries.length === 0) { container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No votes cast yet.</p>'; return; }
   container.innerHTML = voteEntries.map(([voteId, vote]) => `
     <div class="vote-item">
       <div class="vote-item-header">
-        <div>
-          <strong style="color:var(--brand);">${vote.voterName}</strong>
-          <span class="vote-item-details"> • ${vote.voterDept} • ${new Date(vote.timestamp).toLocaleString()}</span>
-        </div>
+        <div><strong style="color:var(--brand);">${vote.voterName}</strong><span class="vote-item-details"> • ${vote.voterDept} • ${new Date(vote.timestamp).toLocaleString()}</span></div>
         <div style="display:flex;gap:5px;">
           <button class="btn btn-info btn-sm" onclick="viewVote('${voteId}')">👁️ View/Edit</button>
           <button class="btn btn-danger btn-sm" onclick="deleteVote('${voteId}')">🗑️ Delete</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function viewVote(voteId) {
   const vote = votes[voteId];
   if(!vote) return showAlert('Vote not found.', 'error');
-  
   currentVoteData = { id: voteId, ...vote };
-  
   document.getElementById('view-vote-id').value = voteId;
   document.getElementById('view-voter-name').innerText = vote.voterName;
   document.getElementById('view-voter-dept').innerText = vote.voterDept;
   document.getElementById('view-vote-time').innerText = new Date(vote.timestamp).toLocaleString();
-  
   const ratingsContainer = document.getElementById('view-vote-ratings');
   let ratingsHtml = '';
-  
   categories.forEach(cat => {
     const catRatings = vote.ratings && vote.ratings[cat.name] ? vote.ratings[cat.name] : {};
     const catBonuses = vote.bonuses && vote.bonuses[cat.name] ? vote.bonuses[cat.name] : {};
     const catNoms = nominations.filter(n => n.category === cat.name);
-    
     if(catNoms.length > 0) {
       ratingsHtml += `<div style="margin-bottom:20px;"><h4 style="color:var(--brand);margin-bottom:10px;">${cat.name}</h4>`;
       catNoms.forEach(nom => {
         const rating = catRatings[nom.id] || '';
         const bonus = catBonuses[nom.id] || '';
-        ratingsHtml += `
-          <div class="vote-rating-row" style="flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px;">
-            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-              <span><strong>${nom.nomineeName}</strong> <small style="color:#666;">(${nom.nomineeDept})</small></span>
-              <div style="display: flex; gap: 15px; align-items: center;">
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                  <label style="font-size: 0.75rem; margin-bottom: 2px;">Rating (1-3)</label>
-                  <input type="number" min="1" max="3" value="${rating}" data-cat="${cat.name}" data-nom="${nom.id}" class="edit-vote-rating" placeholder="1-3" style="width: 60px; text-align: center;">
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                  <label style="font-size: 0.75rem; margin-bottom: 2px;">Bonus</label>
-                  <input type="number" min="0" value="${bonus}" data-cat="${cat.name}" data-nom="${nom.id}" class="edit-vote-bonus" placeholder="0" style="width: 60px; text-align: center;">
-                </div>
-              </div>
+        ratingsHtml += `<div class="vote-rating-row" style="flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px;">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <span><strong>${nom.nomineeName}</strong> <small style="color:#666;">(${nom.nomineeDept})</small></span>
+            <div style="display: flex; gap: 15px; align-items: center;">
+              <div style="display: flex; flex-direction: column; align-items: center;"><label style="font-size: 0.75rem; margin-bottom: 2px;">Rating (1-3)</label><input type="number" min="1" max="3" value="${rating}" data-cat="${cat.name}" data-nom="${nom.id}" class="edit-vote-rating" placeholder="1-3" style="width: 60px; text-align: center;"></div>
+              <div style="display: flex; flex-direction: column; align-items: center;"><label style="font-size: 0.75rem; margin-bottom: 2px;">Bonus</label><input type="number" min="0" value="${bonus}" data-cat="${cat.name}" data-nom="${nom.id}" class="edit-vote-bonus" placeholder="0" style="width: 60px; text-align: center;"></div>
             </div>
           </div>
-        `;
+        </div>`;
       });
       ratingsHtml += '</div>';
     }
   });
-  
   ratingsContainer.innerHTML = ratingsHtml || '<p style="color:#999;">No ratings found.</p>';
   document.getElementById('view-vote-modal').classList.add('active');
 }
 
 function saveEditedVote() {
   const voteId = document.getElementById('view-vote-id').value;
-  const ratingInputs = document.querySelectorAll('.edit-vote-rating');
-  const bonusInputs = document.querySelectorAll('.edit-vote-bonus');
-  
-  const updatedRatings = {};
-  const updatedBonuses = {};
-  
-  ratingInputs.forEach(input => {
-    const catName = input.dataset.cat;
-    const nomId = input.dataset.nom;
-    const val = parseInt(input.value);
-    
+  const updatedRatings = {}; const updatedBonuses = {};
+  document.querySelectorAll('.edit-vote-rating').forEach(input => {
+    const catName = input.dataset.cat; const nomId = input.dataset.nom; const val = parseInt(input.value);
     if(!updatedRatings[catName]) updatedRatings[catName] = {};
-    if(!isNaN(val) && val >= 1 && val <= 3) {
-      updatedRatings[catName][nomId] = val;
-    }
+    if(!isNaN(val) && val >= 1 && val <= 3) updatedRatings[catName][nomId] = val;
   });
-
-  bonusInputs.forEach(input => {
-    const catName = input.dataset.cat;
-    const nomId = input.dataset.nom;
-    const val = parseInt(input.value);
-    
+  document.querySelectorAll('.edit-vote-bonus').forEach(input => {
+    const catName = input.dataset.cat; const nomId = input.dataset.nom; const val = parseInt(input.value);
     if(!updatedBonuses[catName]) updatedBonuses[catName] = {};
-    if(!isNaN(val)) {
-      updatedBonuses[catName][nomId] = val;
-    }
+    if(!isNaN(val)) updatedBonuses[catName][nomId] = val;
   });
-  
-  const updatedVote = {
-    voterName: currentVoteData.voterName,
-    voterDept: currentVoteData.voterDept,
-    timestamp: currentVoteData.timestamp,
-    ratings: updatedRatings,
-    bonuses: updatedBonuses
-  };
-  
-  const path = 'votes/' + currentPeriod.replace(' ', '_') + '/' + voteId;
-  db.ref(path).set(updatedVote).then(() => {
-    showAlert('Vote and bonus updated successfully!', 'success');
-    closeViewVoteModal();
-  }).catch(err => showAlert('Error: ' + err.message, 'error'));
+  const updatedVote = { voterName: currentVoteData.voterName, voterDept: currentVoteData.voterDept, timestamp: currentVoteData.timestamp, ratings: updatedRatings, bonuses: updatedBonuses };
+  db.ref('votes/' + currentPeriod.replace(' ', '_') + '/' + voteId).set(updatedVote).then(() => { showAlert('Vote and bonus updated successfully!', 'success'); closeViewVoteModal(); }).catch(err => showAlert('Error: ' + err.message, 'error'));
 }
 
 function deleteVote(voteId) {
   if(!confirm('Are you sure you want to delete this vote? This action cannot be undone.')) return;
-  
-  const path = 'votes/' + currentPeriod.replace(' ', '_') + '/' + voteId;
-  db.ref(path).remove().then(() => {
-    showAlert('Vote deleted successfully.', 'success');
-  }).catch(err => showAlert('Error: ' + err.message, 'error'));
+  db.ref('votes/' + currentPeriod.replace(' ', '_') + '/' + voteId).remove().then(() => showAlert('Vote deleted successfully.', 'success')).catch(err => showAlert('Error: ' + err.message, 'error'));
 }
 
-function closeViewVoteModal() {
-  document.getElementById('view-vote-modal').classList.remove('active');
-  currentVoteData = null;
-}
+function closeViewVoteModal() { document.getElementById('view-vote-modal').classList.remove('active'); currentVoteData = null; }
 
-// ============ NOMINATION EDIT FUNCTIONS ============
+// ============ NOMINATION EDIT ============
 function editNomination(nomId) {
   const nom = nominations.find(n => n.id === nomId);
   if(!nom) return showAlert('Nomination not found.', 'error');
-  
   document.getElementById('edit-nom-id').value = nomId;
   document.getElementById('edit-nom-leader-name').value = nom.leaderName || '';
   document.getElementById('edit-nom-leader-dept').value = nom.leaderDept || '';
   document.getElementById('edit-nom-name').value = nom.nomineeName || '';
   document.getElementById('edit-nom-dept').value = nom.nomineeDept || '';
   document.getElementById('edit-nom-desc').value = nom.description || '';
-  
   const catSelect = document.getElementById('edit-nom-category');
-  catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
-    categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
   catSelect.value = nom.category || '';
-  
   const currentPicDiv = document.getElementById('edit-pic-current');
   const editPicPreview = document.getElementById('edit-pic-preview');
-  if(nom.image) {
-    currentPicDiv.innerHTML = '<p style="margin-bottom:5px;"><strong>Current Photo:</strong></p><img src="' + nom.image + '" style="max-width:150px;border-radius:8px;">';
-    editPicPreview.src = nom.image;
-    editPicPreview.style.display = 'block';
-    tempEditPic = nom.image;
-  } else {
-    currentPicDiv.innerHTML = '<p style="color:#999;margin-bottom:10px;">No photo uploaded</p>';
-    editPicPreview.style.display = 'none';
-    tempEditPic = '';
-  }
-  
+  if(nom.image) { currentPicDiv.innerHTML = '<p style="margin-bottom:5px;"><strong>Current Photo:</strong></p><img src="' + nom.image + '" style="max-width:150px;border-radius:8px;">'; editPicPreview.src = nom.image; editPicPreview.style.display = 'block'; tempEditPic = nom.image; }
+  else { currentPicDiv.innerHTML = '<p style="color:#999;margin-bottom:10px;">No photo uploaded</p>'; editPicPreview.style.display = 'none'; tempEditPic = ''; }
   const editPicDrop = document.getElementById('edit-pic-drop');
   const editPicFile = document.getElementById('edit-pic-file');
-  
   editPicDrop.onclick = () => editPicFile.click();
   editPicFile.onchange = function(e) {
     const file = e.target.files[0];
     if(file) {
       if(!file.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
       const reader = new FileReader();
-      reader.onload = function(ev) {
-        editPicPreview.src = ev.target.result;
-        editPicPreview.style.display = 'block';
-        tempEditPic = ev.target.result;
-      };
+      reader.onload = function(ev) { editPicPreview.src = ev.target.result; editPicPreview.style.display = 'block'; tempEditPic = ev.target.result; };
       reader.readAsDataURL(file);
     }
   };
-  
   document.getElementById('edit-nomination-modal').classList.add('active');
 }
 
@@ -1864,59 +1307,25 @@ function saveEditedNomination() {
   const nomDept = document.getElementById('edit-nom-dept').value.trim();
   const category = document.getElementById('edit-nom-category').value;
   const desc = document.getElementById('edit-nom-desc').value.trim();
-  
-  if(!leaderName || !leaderDept || !nomName || !nomDept || !category || !desc) {
-    return showAlert('Please fill all required fields.', 'error');
-  }
-  
-  const updatedNom = {
-    id: nomId,
-    leaderName, leaderDept, nomineeName: nomName, nomineeDept: nomDept,
-    category, description: desc,
-    image: tempEditPic || '',
-    timestamp: new Date().toISOString()
-  };
-  
-  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + nomId;
-  db.ref(path).set(updatedNom).then(() => {
-    showAlert('Nomination updated successfully!', 'success');
-    closeEditNominationModal();
-    tempEditPic = '';
-    loadLeaderHistory();
-  }).catch(err => showAlert('Error: ' + err.message, 'error'));
+  if(!leaderName || !leaderDept || !nomName || !nomDept || !category || !desc) return showAlert('Please fill all required fields.', 'error');
+  const updatedNom = { id: nomId, leaderName, leaderDept, nomineeName: nomName, nomineeDept: nomDept, category, description: desc, image: tempEditPic || '', timestamp: new Date().toISOString() };
+  db.ref('nominations/' + currentPeriod.replace(' ', '_') + '/' + nomId).set(updatedNom).then(() => { showAlert('Nomination updated successfully!', 'success'); closeEditNominationModal(); tempEditPic = ''; loadLeaderHistory(); }).catch(err => showAlert('Error: ' + err.message, 'error'));
 }
 
-function closeEditNominationModal() {
-  document.getElementById('edit-nomination-modal').classList.remove('active');
-  tempEditPic = '';
-}
+function closeEditNominationModal() { document.getElementById('edit-nomination-modal').classList.remove('active'); tempEditPic = ''; }
 
-// ============ NOMINATION FUNCTIONS ============
+// ============ NOMINATION ============
 function submitNomination() {
   const nomName = document.getElementById('nom-name').value.trim();
   const nomDept = document.getElementById('nom-dept').value.trim();
   const category = document.getElementById('nom-category').value;
   const desc = document.getElementById('nom-desc').value.trim();
-  
   if(!nomName || !nomDept || !category || !desc) return showAlert('Please fill all nominee fields.', 'error');
-  
-  const nomination = {
-    id: Date.now().toString(),
-    leaderName: currentLeader.name,
-    leaderDept: currentLeader.dept,
-    nomineeName: nomName,
-    nomineeDept: nomDept,
-    category,
-    description: desc,
-    image: tempPic || '',
-    timestamp: new Date().toISOString()
-  };
-  
-  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + nomination.id;
-  db.ref(path).set(nomination)
+  const nomination = { id: Date.now().toString(), leaderName: currentLeader.name, leaderDept: currentLeader.dept, nomineeName: nomName, nomineeDept: nomDept, category, description: desc, image: tempPic || '', timestamp: new Date().toISOString() };
+  db.ref('nominations/' + currentPeriod.replace(' ', '_') + '/' + nomination.id).set(nomination)
     .then(() => {
       showAlert('Nomination submitted successfully!', 'success');
-      ['nom-name', 'nom-dept', 'nom-category', 'nom-desc'].forEach(id => document.getElementById(id).value = '');
+      ['nom-name','nom-dept','nom-category','nom-desc'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('pic-preview').style.display = 'none';
       tempPic = '';
       loadLeaderHistory();
@@ -1928,80 +1337,49 @@ function submitNomination() {
 
 function deleteMyNomination(id) {
   if(!confirm('Delete this nomination?')) return;
-  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + id;
-  db.ref(path).remove().then(() => {
-    showAlert('Nomination deleted.', 'success');
-    loadLeaderHistory();
-  });
+  db.ref('nominations/' + currentPeriod.replace(' ', '_') + '/' + id).remove().then(() => { showAlert('Nomination deleted.', 'success'); loadLeaderHistory(); });
 }
 
 function deleteNomination(id) {
   if(!confirm('Delete this nomination?')) return;
-  const path = 'nominations/' + currentPeriod.replace(' ', '_') + '/' + id;
-  db.ref(path).remove();
+  db.ref('nominations/' + currentPeriod.replace(' ', '_') + '/' + id).remove();
 }
 
-// ============ VOTING FUNCTIONS ============
+// ============ VOTING ============
 function checkVotingStatus() {
   const now = new Date();
   const startTime = votingSchedule.start ? new Date(votingSchedule.start) : null;
   const endTime = votingSchedule.end ? new Date(votingSchedule.end) : null;
-  
   const statusTitle = document.getElementById('voting-status-title');
   const statusMessage = document.getElementById('voting-status-message');
   const voterInfoCard = document.getElementById('voter-info-card');
-  
-  if (!startTime || !endTime) {
-    statusTitle.innerText = '⚠️ Voting Schedule Not Set';
-    statusMessage.innerText = 'The admin has not set a voting schedule yet. Please check back later.';
-    voterInfoCard.style.display = 'none';
-  } else if (now < startTime) {
-    statusTitle.innerText = '⏳ Voting Has Not Started';
-    statusMessage.innerText = `Voting will open on ${startTime.toLocaleString()}. Please wait until then.`;
-    voterInfoCard.style.display = 'none';
-  } else if (now > endTime) {
-    statusTitle.innerText = '🔒 Voting Has Closed';
-    statusMessage.innerText = `Voting closed on ${endTime.toLocaleString()}. Thank you to everyone who participated!`;
-    voterInfoCard.style.display = 'none';
-  } else {
-    statusTitle.innerText = '✅ Voting is Open!';
-    statusMessage.innerText = `Voting is currently open. It will close on ${endTime.toLocaleString()}.`;
-    voterInfoCard.style.display = 'block';
-  }
+  if (!startTime || !endTime) { statusTitle.innerText = '⚠️ Voting Schedule Not Set'; statusMessage.innerText = 'The admin has not set a voting schedule yet. Please check back later.'; voterInfoCard.style.display = 'none'; }
+  else if (now < startTime) { statusTitle.innerText = '⏳ Voting Has Not Started'; statusMessage.innerText = `Voting will open on ${startTime.toLocaleString()}. Please wait until then.`; voterInfoCard.style.display = 'none'; }
+  else if (now > endTime) { statusTitle.innerText = '🔒 Voting Has Closed'; statusMessage.innerText = `Voting closed on ${endTime.toLocaleString()}. Thank you to everyone who participated!`; voterInfoCard.style.display = 'none'; }
+  else { statusTitle.innerText = '✅ Voting is Open!'; statusMessage.innerText = `Voting is currently open. It will close on ${endTime.toLocaleString()}.`; voterInfoCard.style.display = 'block'; }
 }
 
 function loadNomineesForVoting() {
-  const path = 'nominations/' + currentPeriod.replace(' ', '_');
-  db.ref(path).on('value', snap => {
+  db.ref('nominations/' + currentPeriod.replace(' ', '_')).on('value', snap => {
     nominations = snap.val() ? Object.values(snap.val()) : [];
-    if(document.getElementById('voting-interface').style.display !== 'none') {
-      renderVotingInterface();
-    }
+    if(document.getElementById('voting-interface').style.display !== 'none') renderVotingInterface();
   });
 }
 
 function startVoting() {
   const name = document.getElementById('voter-name').value.trim();
   const dept = document.getElementById('voter-dept').value.trim();
-  
   if(!name || !dept) return showAlert('Please fill both fields.', 'error');
-  
   const now = new Date();
   const startTime = votingSchedule.start ? new Date(votingSchedule.start) : null;
   const endTime = votingSchedule.end ? new Date(votingSchedule.end) : null;
-  
-  if ((startTime && now < startTime) || (endTime && now > endTime)) {
-    return showAlert('Voting is not currently open.', 'error');
-  }
-  
+  if ((startTime && now < startTime) || (endTime && now > endTime)) return showAlert('Voting is not currently open.', 'error');
   currentVoter = {name, dept};
   document.getElementById('voter-display').innerText = name + ' (' + dept + ')';
   document.getElementById('voter-info-card').style.display = 'none';
   document.getElementById('voting-interface').style.display = 'block';
-  
   voterRatings = {};
   categories.forEach(c => voterRatings[c.name] = {});
-  
   renderVotingInterface();
 }
 
@@ -2010,99 +1388,50 @@ function renderVotingInterface() {
     const count = nominations.filter(n => n.category === c.name).length;
     return `<button class="cat-tab ${i === 0 ? 'active' : ''}" onclick="showCategory('${c.name}', this)">${c.name} (${count})</button>`;
   }).join('');
-  
   document.getElementById('nominee-list').innerHTML = categories.map((c, i) => {
     const noms = nominations.filter(n => n.category === c.name);
     if(noms.length === 0) return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}"><p style="text-align:center;padding:30px;color:#888;">No nominations yet.</p></div>`;
-    
     const ratedNominees = new Set();
-    
-    return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}">
-      <div class="nominee-grid">
-        ${noms.map(n => {
-          const normalizedName = n.nomineeName.toLowerCase().trim();
-          const hasRatingInput = !ratedNominees.has(normalizedName);
-          if (hasRatingInput) {
-            ratedNominees.add(normalizedName);
-          }
-          
-          return `
-          <div class="nominee-card">
-            <div class="nominee-header">
-              <div class="nominee-img">${n.image ? `<img src="${n.image}">` : '👤'}</div>
-              <h3>${n.nomineeName}</h3>
-            </div>
-            <div class="nominee-body">
-              <div class="nominee-meta">
-                <div><strong>Department:</strong> ${n.nomineeDept}</div>
-                <div><strong>Category:</strong> ${n.category}</div>
-                <div><strong>Nominated by:</strong> ${n.leaderName}</div>
-              </div>
-              <p class="nominee-desc">${n.description}</p>
-              ${hasRatingInput ? `
-                <div class="rating-input" style="flex-direction: column; align-items: flex-start;">
-                  <label style="margin-bottom: 8px;">Your Rating:</label>
-                  <div class="rating-btn-group">
-                    <button type="button" class="rating-btn zero ${!(voterRatings[c.name] && voterRatings[c.name][n.id]) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="0">0</button>
-                    <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 1) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="1">1</button>
-                    <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 2) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="2">2</button>
-                    <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 3) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="3">3</button>
-                  </div>
-                  <small style="color:#888; font-size:0.75rem; margin-top:6px;">Vote for max 3 per category (0 = No Vote)</small>
-                </div>
-              ` : `
-                <div class="rating-input" style="opacity: 0.6; pointer-events: none; flex-direction: column; align-items: flex-start;">
-                  <label style="margin-bottom: 8px;">Rating (Duplicate profile):</label>
-                  <div class="rating-btn-group">
-                    <button type="button" class="rating-btn zero active" disabled>0</button>
-                    <button type="button" class="rating-btn" disabled>1</button>
-                    <button type="button" class="rating-btn" disabled>2</button>
-                    <button type="button" class="rating-btn" disabled>3</button>
-                  </div>
-                </div>
-              `}
-            </div>
+    return `<div class="cat-panel" data-cat="${c.name}" style="display:${i === 0 ? 'block' : 'none'}"><div class="nominee-grid">
+      ${noms.map(n => {
+        const normalizedName = n.nomineeName.toLowerCase().trim();
+        const hasRatingInput = !ratedNominees.has(normalizedName);
+        if (hasRatingInput) ratedNominees.add(normalizedName);
+        return `<div class="nominee-card">
+          <div class="nominee-header"><div class="nominee-img">${n.image ? `<img src="${n.image}">` : '👤'}</div><h3>${n.nomineeName}</h3></div>
+          <div class="nominee-body">
+            <div class="nominee-meta"><div><strong>Department:</strong> ${n.nomineeDept}</div><div><strong>Category:</strong> ${n.category}</div><div><strong>Nominated by:</strong> ${n.leaderName}</div></div>
+            <p class="nominee-desc">${n.description}</p>
+            ${hasRatingInput ? `<div class="rating-input" style="flex-direction: column; align-items: flex-start;"><label style="margin-bottom: 8px;">Your Rating:</label>
+              <div class="rating-btn-group">
+                <button type="button" class="rating-btn zero ${!(voterRatings[c.name] && voterRatings[c.name][n.id]) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="0">0</button>
+                <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 1) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="1">1</button>
+                <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 2) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="2">2</button>
+                <button type="button" class="rating-btn ${(voterRatings[c.name] && voterRatings[c.name][n.id] === 3) ? 'active' : ''}" data-cat="${c.name}" data-nom="${n.id}" data-val="3">3</button>
+              </div><small style="color:#888; font-size:0.75rem; margin-top:6px;">Vote for max 3 per category (0 = No Vote)</small></div>`
+            : `<div class="rating-input" style="opacity: 0.6; pointer-events: none; flex-direction: column; align-items: flex-start;"><label style="margin-bottom: 8px;">Rating (Duplicate profile):</label>
+              <div class="rating-btn-group"><button type="button" class="rating-btn zero active" disabled>0</button><button type="button" class="rating-btn" disabled>1</button><button type="button" class="rating-btn" disabled>2</button><button type="button" class="rating-btn" disabled>3</button></div></div>`}
           </div>
-        `}).join('')}
-      </div>
-    </div>`;
+        </div>`;
+      }).join('')}
+    </div></div>`;
   }).join('');
-  
   document.querySelectorAll('.rating-btn').forEach(btn => {
     btn.onclick = function(e) {
       e.preventDefault();
       if (this.disabled) return;
-      
-      const catName = this.dataset.cat;
-      const nomId = this.dataset.nom;
-      const val = parseInt(this.dataset.val);
-      
+      const catName = this.dataset.cat; const nomId = this.dataset.nom; const val = parseInt(this.dataset.val);
       const currentRating = (voterRatings[catName] && voterRatings[catName][nomId]) ? voterRatings[catName][nomId] : 0;
       const activeVotesInCat = voterRatings[catName] ? Object.keys(voterRatings[catName]).length : 0;
-      
-      if (val > 0 && currentRating === 0 && activeVotesInCat >= 3) {
-        showAlert(`Maximum 3 votes allowed in ${catName}. Set an existing vote to 0 to change your choice.`, 'error');
-        return;
-      }
-      
+      if (val > 0 && currentRating === 0 && activeVotesInCat >= 3) { showAlert(`Maximum 3 votes allowed in ${catName}. Set an existing vote to 0 to change your choice.`, 'error'); return; }
       if (!voterRatings[catName]) voterRatings[catName] = {};
-      
-      if (val === 0) {
-        delete voterRatings[catName][nomId];
-      } else {
-        voterRatings[catName][nomId] = val;
-      }
-      
+      if (val === 0) delete voterRatings[catName][nomId];
+      else voterRatings[catName][nomId] = val;
       const group = this.closest('.rating-btn-group');
-      if (group) {
-        group.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-      }
-      
+      if (group) { group.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); }
       updateProgress();
     };
   });
-  
   updateProgress();
 }
 
@@ -2115,49 +1444,19 @@ function showCategory(catName, btn) {
 function updateProgress() {
   let uniqueRated = 0;
   const allUniqueNominees = new Set();
-  categories.forEach(c => {
-    nominations.filter(n => n.category === c.name).forEach(n => {
-      allUniqueNominees.add(n.nomineeName.toLowerCase().trim() + '_' + c.name);
-    });
-  });
-  
-  categories.forEach(c => {
-    if(voterRatings[c.name]) {
-      uniqueRated += Object.keys(voterRatings[c.name]).length;
-    }
-  });
-  
+  categories.forEach(c => { nominations.filter(n => n.category === c.name).forEach(n => allUniqueNominees.add(n.nomineeName.toLowerCase().trim() + '_' + c.name)); });
+  categories.forEach(c => { if(voterRatings[c.name]) uniqueRated += Object.keys(voterRatings[c.name]).length; });
   document.getElementById('progress-text').innerText = uniqueRated + ' active votes cast';
   document.getElementById('progress-fill').style.width = (allUniqueNominees.size > 0 ? (uniqueRated / allUniqueNominees.size * 100) : 0) + '%';
 }
 
 function submitVotes() {
-  let totalRated = 0;
-  let limitExceeded = false;
-  
-  Object.keys(voterRatings).forEach(cat => {
-    const count = Object.keys(voterRatings[cat] || {}).length;
-    totalRated += count;
-    if (count > 3) limitExceeded = true;
-  });
-  
-  if (limitExceeded) {
-    return showAlert('You cannot vote for more than 3 nominees in a single category.', 'error');
-  }
-  
-  if(totalRated === 0) {
-    return showAlert('Please rate at least one nominee before submitting.', 'error');
-  }
-  
-  const voteData = {
-    voterName: currentVoter.name,
-    voterDept: currentVoter.dept,
-    timestamp: new Date().toISOString(),
-    ratings: voterRatings
-  };
-  
-  const path = 'votes/' + currentPeriod.replace(' ', '_') + '/' + Date.now();
-  db.ref(path).set(voteData)
+  let totalRated = 0; let limitExceeded = false;
+  Object.keys(voterRatings).forEach(cat => { const count = Object.keys(voterRatings[cat] || {}).length; totalRated += count; if (count > 3) limitExceeded = true; });
+  if (limitExceeded) return showAlert('You cannot vote for more than 3 nominees in a single category.', 'error');
+  if(totalRated === 0) return showAlert('Please rate at least one nominee before submitting.', 'error');
+  const voteData = { voterName: currentVoter.name, voterDept: currentVoter.dept, timestamp: new Date().toISOString(), ratings: voterRatings };
+  db.ref('votes/' + currentPeriod.replace(' ', '_') + '/' + Date.now()).set(voteData)
     .then(() => {
       showAlert('Votes submitted successfully!', 'success');
       document.getElementById('voting-interface').style.display = 'none';
@@ -2170,30 +1469,17 @@ function submitVotes() {
     .catch(err => showAlert('Error: ' + err.message, 'error'));
 }
 
-// ============ DATA MANAGEMENT - EXCEL EXPORT ============
+// ============ DATA MANAGEMENT ============
 function exportData() {
   try {
-    if (typeof XLSX === 'undefined') {
-      showAlert('Excel library not loaded. Please check your internet connection.', 'error');
-      return;
-    }
-    
+    if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded. Please check your internet connection.', 'error'); return; }
     const wb = XLSX.utils.book_new();
-    
     const nominationsData = (nominations || []).map(n => ({
-      'Nominee Name': n.nomineeName || '',
-      'Department': n.nomineeDept || '',
-      'Category': n.category || '',
-      'Nominated By': n.leaderName || '',
-      'Nominator Dept': n.leaderDept || '',
-      'Description': n.description || '',
-      'Admin Bonus': n.adminBonus || 0,
-      'Photo': n.image ? 'Yes' : 'No',
-      'Timestamp': n.timestamp ? new Date(n.timestamp).toLocaleString() : ''
+      'Nominee Name': n.nomineeName || '', 'Department': n.nomineeDept || '', 'Category': n.category || '',
+      'Nominated By': n.leaderName || '', 'Nominator Dept': n.leaderDept || '', 'Description': n.description || '',
+      'Admin Bonus': n.adminBonus || 0, 'Photo': n.image ? 'Yes' : 'No', 'Timestamp': n.timestamp ? new Date(n.timestamp).toLocaleString() : ''
     }));
-    const nominationsWS = XLSX.utils.json_to_sheet(nominationsData);
-    XLSX.utils.book_append_sheet(wb, nominationsWS, 'Nominations');
-    
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(nominationsData), 'Nominations');
     const votesData = [];
     if (votes && typeof votes === 'object') {
       Object.entries(votes).forEach(([voteId, vote]) => {
@@ -2203,274 +1489,126 @@ function exportData() {
               Object.entries(ratings).forEach(([nomId, rating]) => {
                 const nominee = nominations.find(n => n.id === nomId);
                 const bonus = vote.bonuses && vote.bonuses[catName] ? vote.bonuses[catName][nomId] : 0;
-                votesData.push({
-                  'Voter Name': vote.voterName || '',
-                  'Voter Department': vote.voterDept || '',
-                  'Category': catName || '',
-                  'Nominee': nominee ? nominee.nomineeName : 'Unknown',
-                  'Rating': rating || 0,
-                  'Bonus': bonus || 0,
-                  'Total Score': (rating || 0) + (bonus || 0),
-                  'Voted At': vote.timestamp ? new Date(vote.timestamp).toLocaleString() : ''
-                });
+                votesData.push({ 'Voter Name': vote.voterName || '', 'Voter Department': vote.voterDept || '', 'Category': catName || '', 'Nominee': nominee ? nominee.nomineeName : 'Unknown', 'Rating': rating || 0, 'Bonus': bonus || 0, 'Total Score': (rating || 0) + (bonus || 0), 'Voted At': vote.timestamp ? new Date(vote.timestamp).toLocaleString() : '' });
               });
             }
           });
         }
       });
     }
-    
-    if (votesData.length > 0) {
-      const votesWS = XLSX.utils.json_to_sheet(votesData);
-      XLSX.utils.book_append_sheet(wb, votesWS, 'Votes');
-    }
-    
-    if (categories && categories.length > 0) {
-      const categoriesWS = XLSX.utils.json_to_sheet(categories);
-      XLSX.utils.book_append_sheet(wb, categoriesWS, 'Categories');
-    }
-    
-    const fileName = `VotingData_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    if (votesData.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(votesData), 'Votes');
+    if (categories && categories.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(categories), 'Categories');
+    XLSX.writeFile(wb, `VotingData_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
     showAlert('Data exported to Excel successfully!', 'success');
-  } catch (error) {
-    console.error('Export error:', error);
-    showAlert('Failed to export data: ' + error.message, 'error');
-  }
+  } catch (error) { console.error('Export error:', error); showAlert('Failed to export data: ' + error.message, 'error'); }
 }
 
 function downloadReport() {
   try {
-    if (typeof XLSX === 'undefined') {
-      showAlert('Excel library not loaded. Please check your internet connection.', 'error');
-      return;
-    }
-    
+    if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded. Please check your internet connection.', 'error'); return; }
     const wb = XLSX.utils.book_new();
-    
     if (categories && categories.length > 0) {
       categories.forEach(cat => {
         const catNominations = (nominations || []).filter(n => n.category === cat.name);
-        
         const reportData = catNominations.map(n => {
-          let totalScore = 0;
-          let voteCount = 0;
-          let totalBonus = parseInt(n.adminBonus) || 0; 
-          
+          let votesTotal = 0; let voteCount = 0; let totalBonus = parseInt(n.adminBonus) || 0;
           if (votes && typeof votes === 'object') {
             Object.values(votes).forEach(vote => {
               if (vote && vote.ratings && vote.ratings[cat.name]) {
                 const rating = vote.ratings[cat.name][n.id];
-                if (rating !== undefined && rating !== null) {
-                  totalScore += parseInt(rating) || 0;
-                  voteCount++;
-                }
+                if (rating !== undefined && rating !== null) { votesTotal += parseInt(rating) || 0; voteCount++; }
               }
               if (vote && vote.bonuses && vote.bonuses[cat.name]) {
                 const bonus = vote.bonuses[cat.name][n.id];
-                if (bonus !== undefined && bonus !== null) {
-                  totalBonus += parseInt(bonus) || 0;
-                }
+                if (bonus !== undefined && bonus !== null) totalBonus += parseInt(bonus) || 0;
               }
             });
           }
-          
-          return {
-            'Rank': 0,
-            'Nominee Name': n.nomineeName || '',
-            'Department': n.nomineeDept || '',
-            'Nominated By': n.leaderName || '',
-            'Votes from Leaders': voteCount,
-            'Bonus Points': totalBonus,
-            'Grand Total': totalScore + totalBonus,
-            'Has Photo': n.image ? 'Yes' : 'No'
-          };
+          return { 'Rank': 0, 'Nominee Name': n.nomineeName || '', 'Department': n.nomineeDept || '', 'Nominated By': n.leaderName || '', 'Votes from Leaders': votesTotal, 'Bonus Points': totalBonus, 'Grand Total': votesTotal + totalBonus, 'Has Photo': n.image ? 'Yes' : 'No' };
         });
-        
         reportData.sort((a, b) => b['Grand Total'] - a['Grand Total']);
-        
-        reportData.forEach((row, index) => {
-          row.Rank = index + 1;
-        });
-        
+        reportData.forEach((row, index) => row.Rank = index + 1);
         const ws = XLSX.utils.json_to_sheet(reportData);
         const sheetName = (cat.name || 'Category').substring(0, 31).replace(/[\\/\?\*\[\]]/g, '');
         XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Category');
       });
     }
-    
     const summaryData = (categories || []).map(cat => {
       const catNoms = (nominations || []).filter(n => n.category === cat.name);
       let totalVotes = 0;
-      
-      if (votes && typeof votes === 'object') {
-        catNoms.forEach(n => {
-          Object.values(votes).forEach(v => {
-            if (v && v.ratings && v.ratings[cat.name] && v.ratings[cat.name][n.id]) {
-              totalVotes++;
-            }
-          });
-        });
-      }
-      
-      return {
-        'Category': cat.name || '',
-        'Total Nominations': catNoms.length,
-        'Total Votes': totalVotes
-      };
+      if (votes && typeof votes === 'object') { catNoms.forEach(n => { Object.values(votes).forEach(v => { if (v && v.ratings && v.ratings[cat.name] && v.ratings[cat.name][n.id]) totalVotes++; }); }); }
+      return { 'Category': cat.name || '', 'Total Nominations': catNoms.length, 'Total Votes': totalVotes };
     });
-    
-    const summaryWS = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, summaryWS, 'Summary');
-    
-    const fileName = `VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), 'Summary');
+    XLSX.writeFile(wb, `VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
     showAlert('Report downloaded successfully!', 'success');
-  } catch (error) {
-    console.error('Report download error:', error);
-    showAlert('Failed to download report: ' + error.message, 'error');
-  }
+  } catch (error) { console.error('Report download error:', error); showAlert('Failed to download report: ' + error.message, 'error'); }
 }
 
 async function downloadPDFReport() {
   try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
-    doc.setFontSize(20);
-    doc.text(`Voting Report - ${currentPeriod}`, 105, 15, { align: 'center' });
-    
+    doc.setFontSize(20); doc.text(`Voting Report - ${currentPeriod}`, 105, 15, { align: 'center' });
     let yPos = 30;
-    
     for (const cat of categories) {
       const catNominations = (nominations || []).filter(n => n.category === cat.name);
-      
-      doc.setFontSize(14);
-      doc.text(cat.name, 14, yPos);
-      yPos += 10;
-      
+      doc.setFontSize(14); doc.text(cat.name, 14, yPos); yPos += 10;
       doc.setFontSize(10);
-      doc.text('Rank', 14, yPos);
-      doc.text('Nominee', 30, yPos);
-      doc.text('Department', 70, yPos);
-      doc.text('Votes', 110, yPos);
-      doc.text('Bonus', 130, yPos);
-      doc.text('Grand Total', 150, yPos);
-      yPos += 5;
-      doc.line(14, yPos, 196, yPos);
-      yPos += 5;
-      
+      doc.text('Rank', 14, yPos); doc.text('Nominee', 30, yPos); doc.text('Department', 70, yPos); doc.text('Votes', 110, yPos); doc.text('Bonus', 130, yPos); doc.text('Grand Total', 150, yPos);
+      yPos += 5; doc.line(14, yPos, 196, yPos); yPos += 5;
       const reportData = catNominations.map(n => {
-        let totalScore = 0;
-        let voteCount = 0;
-        let totalBonus = parseInt(n.adminBonus) || 0; 
-        
+        let votesTotal = 0; let voteCount = 0; let totalBonus = parseInt(n.adminBonus) || 0;
         if (votes && typeof votes === 'object') {
           Object.values(votes).forEach(vote => {
             if (vote && vote.ratings && vote.ratings[cat.name]) {
               const rating = vote.ratings[cat.name][n.id];
-              if (rating !== undefined && rating !== null) {
-                totalScore += parseInt(rating) || 0;
-                voteCount++;
-              }
+              if (rating !== undefined && rating !== null) { votesTotal += parseInt(rating) || 0; voteCount++; }
             }
             if (vote && vote.bonuses && vote.bonuses[cat.name]) {
               const bonus = vote.bonuses[cat.name][n.id];
-              if (bonus !== undefined && bonus !== null) {
-                totalBonus += parseInt(bonus) || 0;
-              }
+              if (bonus !== undefined && bonus !== null) totalBonus += parseInt(bonus) || 0;
             }
           });
         }
-        
-        return {
-          nomineeName: n.nomineeName || '',
-          department: n.nomineeDept || '',
-          totalScore: totalScore + totalBonus,
-          bonus: totalBonus,
-          voteCount,
-          image: n.image
-        };
-      });
-      
-      reportData.sort((a, b) => b.totalScore - a.totalScore);
-      
+        return { nomineeName: n.nomineeName || '', department: n.nomineeDept || '', votesTotal, bonus: totalBonus, grandTotal: votesTotal + totalBonus, image: n.image };
+      }).sort((a, b) => b.grandTotal - a.grandTotal);
       reportData.forEach((row, index) => {
-        if (yPos > 270) {
-          doc.addPage();
-          yPos = 15;
-        }
-        
+        if (yPos > 270) { doc.addPage(); yPos = 15; }
         doc.text(String(index + 1), 14, yPos);
         doc.text(row.nomineeName.substring(0, 15), 30, yPos);
         doc.text(row.department.substring(0, 15), 70, yPos);
-        doc.text(String(row.voteCount), 110, yPos);
+        doc.text(String(row.votesTotal), 110, yPos);
         doc.text(String(row.bonus > 0 ? '+' + row.bonus : 0), 130, yPos);
-        doc.text(String(row.totalScore), 150, yPos);
-        
-        if (row.image) {
-          try {
-            const imgData = row.image;
-            doc.addImage(imgData, 'JPEG', 175, yPos - 5, 8, 8);
-          } catch (e) {
-            // Ignore image errors
-          }
-        }
-        
+        doc.text(String(row.grandTotal), 150, yPos);
+        if (row.image) { try { doc.addImage(row.image, 'JPEG', 175, yPos - 5, 8, 8); } catch (e) {} }
         yPos += 8;
       });
-      
       yPos += 10;
     }
-    
-    const fileName = `VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-    doc.save(fileName);
+    doc.save(`VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
     showAlert('PDF report downloaded successfully!', 'success');
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    showAlert('Failed to generate PDF: ' + error.message, 'error');
-  }
+  } catch (error) { console.error('PDF generation error:', error); showAlert('Failed to generate PDF: ' + error.message, 'error'); }
 }
 
-function showResetModal() {
-  document.getElementById('reset-modal').classList.add('active');
-}
-
-function closeResetModal() {
-  document.getElementById('reset-modal').classList.remove('active');
-}
+function showResetModal() { document.getElementById('reset-modal').classList.add('active'); }
+function closeResetModal() { document.getElementById('reset-modal').classList.remove('active'); }
 
 function confirmReset() {
   const month = document.getElementById('reset-month').value;
   const year = document.getElementById('reset-year').value;
   const newPeriod = `${month} ${year}`;
-  
   if(confirm(`This will archive data for "${currentPeriod}" and reset for "${newPeriod}". Continue?`)) {
     const oldPath = currentPeriod.replace(' ', '_');
     const newPath = newPeriod.replace(' ', '_');
-    
-    db.ref('archive/' + oldPath).set({
-      nominations, votes, categories,
-      archivedAt: new Date().toISOString(),
-      period: currentPeriod
-    });
-    
+    db.ref('archive/' + oldPath).set({ nominations, votes, categories, archivedAt: new Date().toISOString(), period: currentPeriod });
     db.ref('nominations/' + oldPath).remove();
     db.ref('votes/' + oldPath).remove();
-    
     currentPeriod = newPeriod;
     db.ref('settings/currentPeriod').set({month, year});
-    
-    categories = [
-      {id: 1, name: "Host of the Month (FOH)"},
-      {id: 2, name: "Host of the Month (HOH)"},
-      {id: 3, name: "Leader of the Quarter"},
-      {id: 4, name: "Sustainability Hero of the Month"}
-    ];
-    const catObj = {};
-    categories.forEach(c => catObj[c.id] = c);
+    categories = [ {id: 1, name: "Host of the Month (FOH)"}, {id: 2, name: "Host of the Month (HOH)"}, {id: 3, name: "Leader of the Quarter"}, {id: 4, name: "Sustainability Hero of the Month"} ];
+    const catObj = {}; categories.forEach(c => catObj[c.id] = c);
     db.ref('categories/' + newPath).set(catObj);
-    
     closeResetModal();
     showAlert('Data archived and reset for ' + newPeriod, 'success');
     loadAdminDashboard();
@@ -2480,10 +1618,7 @@ function confirmReset() {
 function resetAllData() {
   if(!confirm('️ WARNING: This will permanently delete ALL data. Continue?')) return;
   if(!confirm('Are you absolutely sure? This cannot be undone!')) return;
-  
-  db.ref('nominations').remove();
-  db.ref('votes').remove();
-  db.ref('categories').remove();
+  db.ref('nominations').remove(); db.ref('votes').remove(); db.ref('categories').remove();
   showAlert('All data deleted.', 'success');
 }
 
@@ -2491,41 +1626,33 @@ function resetAllData() {
 const picDrop = document.getElementById('pic-drop');
 const picFile = document.getElementById('pic-file');
 const picPreview = document.getElementById('pic-preview');
-
 picDrop.onclick = () => picFile.click();
 picDrop.ondragover = e => { e.preventDefault(); picDrop.classList.add('dragover'); };
 picDrop.ondragleave = () => picDrop.classList.remove('dragover');
 picDrop.ondrop = e => { e.preventDefault(); picDrop.classList.remove('dragover'); if(e.dataTransfer.files[0]) handlePicFile(e.dataTransfer.files[0]); };
 picFile.onchange = e => { if(e.target.files[0]) handlePicFile(e.target.files[0]); };
-
 function handlePicFile(f) {
   if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
   const r = new FileReader();
   r.onload = ev => { picPreview.src = ev.target.result; picPreview.style.display = 'block'; tempPic = ev.target.result; };
   r.readAsDataURL(f);
 }
-
 const logoDrop = document.getElementById('logo-drop');
-const logoFile = document.getElementById('logo-file');
+const logoFile = document.getElementById('brand-logo-file');
 const logoPreview = document.getElementById('logo-preview');
-
 logoDrop.onclick = () => logoFile.click();
 logoFile.onchange = e => { if(e.target.files[0]) handleLogoFile(e.target.files[0]); };
-
 function handleLogoFile(f) {
   if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
   const r = new FileReader();
   r.onload = ev => { logoPreview.src = ev.target.result; logoPreview.style.display = 'block'; tempLogo = ev.target.result; };
   r.readAsDataURL(f);
 }
-
 const bgDrop = document.getElementById('bg-drop');
 const bgFile = document.getElementById('bg-file');
 const bgPreview = document.getElementById('bg-preview');
-
 bgDrop.onclick = () => bgFile.click();
 bgFile.onchange = e => { if(e.target.files[0]) handleBgFile(e.target.files[0]); };
-
 function handleBgFile(f) {
   if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
   const r = new FileReader();
@@ -2533,7 +1660,6 @@ function handleBgFile(f) {
   r.readAsDataURL(f);
 }
 
-// ============ UTILITIES ============
 function showAlert(msg, type) {
   const el = document.getElementById('alert-' + type);
   el.innerText = msg;
@@ -2542,8 +1668,7 @@ function showAlert(msg, type) {
 }
 
 function loadNominations() {
-  const path = 'nominations/' + currentPeriod.replace(' ', '_');
-  db.ref(path).on('value', snap => {
+  db.ref('nominations/' + currentPeriod.replace(' ', '_')).on('value', snap => {
     nominations = snap.val() ? Object.values(snap.val()) : [];
   });
 }
