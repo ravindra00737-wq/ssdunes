@@ -82,7 +82,6 @@ textarea{resize:vertical;min-height:100px;}
 .rating-input{display:flex;align-items:center;gap:10px;padding:12px;background:#faf7fa;border-radius:8px;}
 .rating-input input{width:80px;padding:8px;text-align:center;font-size:1.2rem;font-weight:bold;color:var(--brand);border:2px solid var(--border);border-radius:6px;}
 
-/* New Rating Buttons */
 .rating-btn-group {
   display: flex;
   gap: 10px;
@@ -166,6 +165,25 @@ textarea{resize:vertical;min-height:100px;}
 .leader-history-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .leader-history-item-actions{display:flex;gap:5px;}
 
+/* Detailed Analysis Styles */
+.analysis-controls{display:flex;gap:15px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end;}
+.analysis-controls .form-group{margin-bottom:0;flex:1;min-width:180px;}
+.view-toggle{display:flex;gap:5px;margin-bottom:15px;}
+.view-toggle-btn{padding:10px 20px;background:#f0e8f0;color:var(--brand);border:none;border-radius:6px;cursor:pointer;font-weight:bold;transition:all 0.3s;}
+.view-toggle-btn.active{background:var(--brand);color:#fff;}
+.view-toggle-btn:hover:not(.active){background:#e0d8e0;}
+.analysis-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px;}
+.summary-card{background:linear-gradient(135deg,#f5eef5,#faf7fa);padding:15px;border-radius:10px;text-align:center;border:1px solid var(--border);}
+.summary-card .summary-value{font-size:1.8rem;font-weight:bold;color:var(--brand);}
+.summary-card .summary-label{font-size:0.85rem;color:#666;margin-top:5px;}
+.detailed-table{max-height:600px;overflow-y:auto;border-radius:8px;border:1px solid var(--border);}
+.detailed-table table{margin:0;}
+.rating-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:0.85rem;}
+.rating-3{background:#d4edda;color:#155724;}
+.rating-2{background:#fff3cd;color:#856404;}
+.rating-1{background:#f8d7da;color:#721c24;}
+.bonus-badge{display:inline-block;padding:3px 8px;border-radius:4px;background:#e0d8e0;color:var(--brand);font-weight:bold;font-size:0.85rem;}
+
 @media(max-width:768px){
   .header-content{flex-direction:column;text-align:center;}
   .hotel-logo{width:80px;height:80px;font-size:2rem;}
@@ -174,6 +192,8 @@ textarea{resize:vertical;min-height:100px;}
   .nav-btn{width:100%;}
   .stats-grid{grid-template-columns:1fr;}
   .nominee-grid{grid-template-columns:1fr;}
+  .analysis-controls{flex-direction:column;}
+  .analysis-controls .form-group{width:100%;}
 }
 </style>
 </head>
@@ -407,6 +427,56 @@ textarea{resize:vertical;min-height:100px;}
           <h3 style="color:var(--brand);margin-bottom:15px;">🏆 Voting Results</h3>
           <div class="category-tabs" id="admin-cat-tabs"></div>
           <div id="admin-results"></div>
+        </div>
+      </div>
+
+      <!-- NEW: Detailed Voting Analysis Section -->
+      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+        <h3 style="color:var(--brand);margin-bottom:15px;">📊 Detailed Voting Analysis</h3>
+        <p style="color:#666;margin-bottom:15px;">View detailed voting patterns leader-wise or nominee-wise with customizable filters.</p>
+        
+        <div class="analysis-controls">
+          <div class="form-group">
+            <label>Filter by Category</label>
+            <select id="analysis-category-filter" onchange="renderDetailedAnalysis()">
+              <option value="all">All Categories</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Search Leader/Nominee</label>
+            <input type="text" id="analysis-search" placeholder="Type to search..." oninput="renderDetailedAnalysis()">
+          </div>
+          <div class="form-group">
+            <label>Sort By</label>
+            <select id="analysis-sort" onchange="renderDetailedAnalysis()">
+              <option value="timestamp-desc">Latest First</option>
+              <option value="timestamp-asc">Oldest First</option>
+              <option value="rating-desc">Highest Rating</option>
+              <option value="rating-asc">Lowest Rating</option>
+              <option value="leader">Leader Name</option>
+              <option value="nominee">Nominee Name</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" id="view-leader-btn" onclick="switchDetailedView('leader')">👤 Leader-wise View</button>
+          <button class="view-toggle-btn" id="view-nominee-btn" onclick="switchDetailedView('nominee')">🏆 Nominee-wise View</button>
+        </div>
+
+        <div class="analysis-summary" id="analysis-summary"></div>
+
+        <div class="detailed-table">
+          <table class="data-table" id="detailed-analysis-table">
+            <thead id="detailed-table-head"></thead>
+            <tbody id="detailed-table-body"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-success" onclick="downloadDetailedExcel()">📥 Download Excel Report</button>
+          <button class="btn btn-info" onclick="downloadDetailedPDF()">📄 Download PDF Report</button>
+          <button class="btn btn-outline" onclick="printDetailedAnalysis()">🖨️ Print View</button>
         </div>
       </div>
 
@@ -685,6 +755,8 @@ let currentPeriod = '';
 let votingSchedule = { start: '', end: '' };
 let currentVoteData = null;
 let currentNominationCategory = 'all';
+let currentDetailedView = 'leader';
+let detailedAnalysisData = [];
 
 // ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
@@ -809,6 +881,13 @@ function loadCategoriesForPeriod() {
     
     catSelect.innerHTML = catOptions;
     if(editCatSelect) editCatSelect.innerHTML = catOptions;
+    
+    // Update analysis category filter
+    const analysisCatFilter = document.getElementById('analysis-category-filter');
+    if(analysisCatFilter) {
+      analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + 
+        categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
       
     if(document.getElementById('tab-admin').classList.contains('active')) {
       renderCategoryList();
@@ -834,6 +913,13 @@ function addCategory() {
     const catSelect = document.getElementById('nom-category');
     catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
       categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    
+    const analysisCatFilter = document.getElementById('analysis-category-filter');
+    if(analysisCatFilter) {
+      analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + 
+        categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+    
     showAlert('Category added!', 'success');
   });
 }
@@ -851,6 +937,13 @@ function deleteCategory(id) {
     const catSelect = document.getElementById('nom-category');
     catSelect.innerHTML = '<option value="">-- Select Award Category --</option>' + 
       categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    
+    const analysisCatFilter = document.getElementById('analysis-category-filter');
+    if(analysisCatFilter) {
+      analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + 
+        categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+    
     showAlert('Category deleted.', 'success');
   });
 }
@@ -964,7 +1057,10 @@ function switchTab(tab, btn) {
     checkVotingStatus();
     loadNomineesForVoting();
   }
-  if(tab === 'admin') loadAdminDashboard();
+  if(tab === 'admin') {
+    loadAdminDashboard();
+    renderDetailedAnalysis();
+  }
 }
 
 // ============ NOMINATION STEP FUNCTIONS ============
@@ -1082,6 +1178,7 @@ function loadAdminDashboard() {
     currentNominationCategory = 'all';
     renderNominationCategoryTabs();
     renderAdminNominations();
+    renderDetailedAnalysis();
   });
   
   const votesPath = 'votes/' + currentPeriod.replace(' ', '_');
@@ -1093,6 +1190,7 @@ function loadAdminDashboard() {
     document.getElementById('stat-voters').innerText = uniqueVoters;
     renderAdminResults();
     renderAdminVotes();
+    renderDetailedAnalysis();
   });
   
   renderCategoryList();
@@ -1238,7 +1336,7 @@ function showAdminCategory(catName, btn) {
       }
     });
     
-    return { ...n, totalScore: totalScore + totalBonus, avg: voteCount > 0 ? (totalScore / voteCount).toFixed(2) : 0, count: voteCount, bonus: totalBonus };
+    return { ...n, totalScore: totalScore + totalBonus, count: voteCount, bonus: totalBonus };
   }).sort((a, b) => b.totalScore - a.totalScore);
   
   const top = results[0]?.totalScore || 0;
@@ -1246,7 +1344,7 @@ function showAdminCategory(catName, btn) {
   document.getElementById('admin-results').innerHTML = results.length === 0 
     ? '<p style="color:#999;text-align:center;padding:20px;">No nominations in this category.</p>'
     : `<table class="data-table">
-        <thead><tr><th>Rank</th><th>Name</th><th>Department</th><th>Votes</th><th>Avg</th><th>Bonus</th><th>Total</th></tr></thead>
+        <thead><tr><th>Rank</th><th>Name</th><th>Department</th><th>Votes from Leaders</th><th>Bonus Points</th><th>Grand Total</th></tr></thead>
         <tbody>
           ${results.map((r, i) => `
             <tr class="${r.totalScore === top && r.totalScore > 0 ? 'winner' : ''}">
@@ -1254,13 +1352,322 @@ function showAdminCategory(catName, btn) {
               <td>${r.nomineeName}</td>
               <td>${r.nomineeDept}</td>
               <td>${r.count}</td>
-              <td>${r.avg}</td>
               <td>${r.bonus > 0 ? '+' + r.bonus : 0}</td>
-              <td>${r.totalScore}</td>
+              <td><strong>${r.totalScore}</strong></td>
             </tr>
           `).join('')}
         </tbody>
       </table>`;
+}
+
+// ============ DETAILED VOTING ANALYSIS ============
+function switchDetailedView(viewType) {
+  currentDetailedView = viewType;
+  document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`view-${viewType}-btn`).classList.add('active');
+  renderDetailedAnalysis();
+}
+
+function renderDetailedAnalysis() {
+  const categoryFilter = document.getElementById('analysis-category-filter').value;
+  const searchTerm = document.getElementById('analysis-search').value.toLowerCase();
+  const sortBy = document.getElementById('analysis-sort').value;
+  
+  // Build detailed analysis data
+  detailedAnalysisData = [];
+  
+  Object.entries(votes).forEach(([voteId, vote]) => {
+    Object.entries(vote.ratings || {}).forEach(([catName, ratings]) => {
+      Object.entries(ratings).forEach(([nomId, rating]) => {
+        const nominee = nominations.find(n => n.id === nomId);
+        if(!nominee) return;
+        
+        const bonus = vote.bonuses && vote.bonuses[catName] ? (vote.bonuses[catName][nomId] || 0) : 0;
+        
+        detailedAnalysisData.push({
+          voteId,
+          voterName: vote.voterName || 'Unknown',
+          voterDept: vote.voterDept || 'N/A',
+          nomineeName: nominee.nomineeName,
+          nomineeDept: nominee.nomineeDept,
+          category: catName,
+          rating: parseInt(rating) || 0,
+          bonus: parseInt(bonus) || 0,
+          totalScore: (parseInt(rating) || 0) + (parseInt(bonus) || 0),
+          timestamp: vote.timestamp ? new Date(vote.timestamp) : new Date()
+        });
+      });
+    });
+  });
+  
+  // Apply filters
+  let filteredData = detailedAnalysisData;
+  
+  if(categoryFilter !== 'all') {
+    filteredData = filteredData.filter(d => d.category === categoryFilter);
+  }
+  
+  if(searchTerm) {
+    filteredData = filteredData.filter(d => 
+      d.voterName.toLowerCase().includes(searchTerm) ||
+      d.nomineeName.toLowerCase().includes(searchTerm) ||
+      d.voterDept.toLowerCase().includes(searchTerm) ||
+      d.nomineeDept.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  // Apply sorting
+  filteredData.sort((a, b) => {
+    switch(sortBy) {
+      case 'timestamp-desc': return b.timestamp - a.timestamp;
+      case 'timestamp-asc': return a.timestamp - b.timestamp;
+      case 'rating-desc': return b.rating - a.rating;
+      case 'rating-asc': return a.rating - b.rating;
+      case 'leader': return a.voterName.localeCompare(b.voterName);
+      case 'nominee': return a.nomineeName.localeCompare(b.nomineeName);
+      default: return 0;
+    }
+  });
+  
+  // Render summary
+  const summaryHtml = `
+    <div class="summary-card">
+      <div class="summary-value">${filteredData.length}</div>
+      <div class="summary-label">Total Votes</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-value">${new Set(filteredData.map(d => d.voterName)).size}</div>
+      <div class="summary-label">Unique Leaders</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-value">${new Set(filteredData.map(d => d.nomineeName)).size}</div>
+      <div class="summary-label">Unique Nominees</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-value">${filteredData.reduce((sum, d) => sum + d.totalScore, 0)}</div>
+      <div class="summary-label">Total Points Awarded</div>
+    </div>
+  `;
+  document.getElementById('analysis-summary').innerHTML = summaryHtml;
+  
+  // Render table
+  const tableHead = document.getElementById('detailed-table-head');
+  const tableBody = document.getElementById('detailed-table-body');
+  
+  if(currentDetailedView === 'leader') {
+    tableHead.innerHTML = `
+      <tr>
+        <th>Leader Name</th>
+        <th>Department</th>
+        <th>Nominee Voted For</th>
+        <th>Nominee Dept</th>
+        <th>Category</th>
+        <th>Rating</th>
+        <th>Bonus</th>
+        <th>Total</th>
+        <th>Voted At</th>
+      </tr>
+    `;
+    
+    tableBody.innerHTML = filteredData.length === 0 
+      ? '<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">No voting data found.</td></tr>'
+      : filteredData.map(d => `
+        <tr>
+          <td><strong>${d.voterName}</strong></td>
+          <td>${d.voterDept}</td>
+          <td>${d.nomineeName}</td>
+          <td>${d.nomineeDept}</td>
+          <td>${d.category}</td>
+          <td><span class="rating-badge rating-${d.rating}">${d.rating}</span></td>
+          <td>${d.bonus > 0 ? `<span class="bonus-badge">+${d.bonus}</span>` : '0'}</td>
+          <td><strong>${d.totalScore}</strong></td>
+          <td>${d.timestamp.toLocaleString()}</td>
+        </tr>
+      `).join('');
+  } else {
+    // Nominee-wise view
+    tableHead.innerHTML = `
+      <tr>
+        <th>Nominee Name</th>
+        <th>Nominee Dept</th>
+        <th>Category</th>
+        <th>Leader Who Voted</th>
+        <th>Leader Dept</th>
+        <th>Rating</th>
+        <th>Bonus</th>
+        <th>Total</th>
+        <th>Voted At</th>
+      </tr>
+    `;
+    
+    tableBody.innerHTML = filteredData.length === 0 
+      ? '<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">No voting data found.</td></tr>'
+      : filteredData.map(d => `
+        <tr>
+          <td><strong>${d.nomineeName}</strong></td>
+          <td>${d.nomineeDept}</td>
+          <td>${d.category}</td>
+          <td>${d.voterName}</td>
+          <td>${d.voterDept}</td>
+          <td><span class="rating-badge rating-${d.rating}">${d.rating}</span></td>
+          <td>${d.bonus > 0 ? `<span class="bonus-badge">+${d.bonus}</span>` : '0'}</td>
+          <td><strong>${d.totalScore}</strong></td>
+          <td>${d.timestamp.toLocaleString()}</td>
+        </tr>
+      `).join('');
+  }
+}
+
+function downloadDetailedExcel() {
+  try {
+    if (typeof XLSX === 'undefined') {
+      showAlert('Excel library not loaded.', 'error');
+      return;
+    }
+    
+    const wb = XLSX.utils.book_new();
+    
+    const exportData = detailedAnalysisData.map(d => ({
+      'View Type': currentDetailedView === 'leader' ? 'Leader-wise' : 'Nominee-wise',
+      'Leader Name': d.voterName,
+      'Leader Department': d.voterDept,
+      'Nominee Name': d.nomineeName,
+      'Nominee Department': d.nomineeDept,
+      'Category': d.category,
+      'Rating': d.rating,
+      'Bonus Points': d.bonus,
+      'Total Score': d.totalScore,
+      'Voted At': d.timestamp.toLocaleString()
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Detailed Voting Analysis');
+    
+    const fileName = `Detailed_Voting_Analysis_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}_${currentDetailedView}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showAlert('Detailed Excel report downloaded successfully!', 'success');
+  } catch (error) {
+    console.error('Excel export error:', error);
+    showAlert('Failed to export Excel: ' + error.message, 'error');
+  }
+}
+
+function downloadDetailedPDF() {
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text(`Detailed Voting Analysis - ${currentPeriod}`, 105, 15, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`View: ${currentDetailedView === 'leader' ? 'Leader-wise' : 'Nominee-wise'}`, 105, 25, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 105, 32, { align: 'center' });
+    
+    let yPos = 45;
+    
+    doc.setFontSize(10);
+    doc.text(`Total Records: ${detailedAnalysisData.length}`, 14, yPos);
+    yPos += 8;
+    
+    // Table headers
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    if(currentDetailedView === 'leader') {
+      doc.text('Leader', 14, yPos);
+      doc.text('Dept', 50, yPos);
+      doc.text('Nominee', 80, yPos);
+      doc.text('Category', 115, yPos);
+      doc.text('Rating', 150, yPos);
+      doc.text('Bonus', 165, yPos);
+      doc.text('Total', 180, yPos);
+    } else {
+      doc.text('Nominee', 14, yPos);
+      doc.text('Dept', 50, yPos);
+      doc.text('Leader', 80, yPos);
+      doc.text('Category', 115, yPos);
+      doc.text('Rating', 150, yPos);
+      doc.text('Bonus', 165, yPos);
+      doc.text('Total', 180, yPos);
+    }
+    yPos += 5;
+    doc.line(14, yPos, 196, yPos);
+    yPos += 5;
+    
+    doc.setFont(undefined, 'normal');
+    
+    detailedAnalysisData.forEach((d, index) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 15;
+      }
+      
+      if(currentDetailedView === 'leader') {
+        doc.text(d.voterName.substring(0, 20), 14, yPos);
+        doc.text(d.voterDept.substring(0, 15), 50, yPos);
+        doc.text(d.nomineeName.substring(0, 18), 80, yPos);
+        doc.text(d.category.substring(0, 18), 115, yPos);
+        doc.text(String(d.rating), 150, yPos);
+        doc.text(String(d.bonus), 165, yPos);
+        doc.text(String(d.totalScore), 180, yPos);
+      } else {
+        doc.text(d.nomineeName.substring(0, 20), 14, yPos);
+        doc.text(d.nomineeDept.substring(0, 15), 50, yPos);
+        doc.text(d.voterName.substring(0, 18), 80, yPos);
+        doc.text(d.category.substring(0, 18), 115, yPos);
+        doc.text(String(d.rating), 150, yPos);
+        doc.text(String(d.bonus), 165, yPos);
+        doc.text(String(d.totalScore), 180, yPos);
+      }
+      
+      yPos += 6;
+    });
+    
+    const fileName = `Detailed_Voting_Analysis_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}_${currentDetailedView}.pdf`;
+    doc.save(fileName);
+    showAlert('Detailed PDF report downloaded successfully!', 'success');
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    showAlert('Failed to generate PDF: ' + error.message, 'error');
+  }
+}
+
+function printDetailedAnalysis() {
+  const printWindow = window.open('', '_blank');
+  const tableHtml = document.getElementById('detailed-analysis-table').outerHTML;
+  const summaryHtml = document.getElementById('analysis-summary').innerHTML;
+  
+  printWindow.document.write(`
+    <html>
+    <head>
+      <title>Detailed Voting Analysis - ${currentPeriod}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { color: #6d3063; }
+        .summary-card { display: inline-block; padding: 15px; margin: 10px; background: #f5eef5; border-radius: 8px; text-align: center; }
+        .summary-value { font-size: 24px; font-weight: bold; color: #6d3063; }
+        .summary-label { font-size: 12px; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+        th { background: #6d3063; color: white; }
+        .rating-badge { padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+        .rating-3 { background: #d4edda; }
+        .rating-2 { background: #fff3cd; }
+        .rating-1 { background: #f8d7da; }
+      </style>
+    </head>
+    <body>
+      <h1>Detailed Voting Analysis - ${currentPeriod}</h1>
+      <p>View: ${currentDetailedView === 'leader' ? 'Leader-wise' : 'Nominee-wise'}</p>
+      <p>Generated: ${new Date().toLocaleString()}</p>
+      <div>${summaryHtml}</div>
+      ${tableHtml}
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  setTimeout(() => {
+    printWindow.print();
+  }, 500);
 }
 
 // ============ VOTE MANAGEMENT ============
@@ -1868,22 +2275,19 @@ function downloadReport() {
             });
           }
           
-          const average = voteCount > 0 ? (totalScore / voteCount).toFixed(2) : 0;
-          
           return {
             'Rank': 0,
             'Nominee Name': n.nomineeName || '',
             'Department': n.nomineeDept || '',
             'Nominated By': n.leaderName || '',
-            'Votes': voteCount,
-            'Avg Rating': average,
-            'Bonus': totalBonus,
-            'Total Score': totalScore + totalBonus,
+            'Votes from Leaders': voteCount,
+            'Bonus Points': totalBonus,
+            'Grand Total': totalScore + totalBonus,
             'Has Photo': n.image ? 'Yes' : 'No'
           };
         });
         
-        reportData.sort((a, b) => b['Total Score'] - a['Total Score']);
+        reportData.sort((a, b) => b['Grand Total'] - a['Grand Total']);
         
         reportData.forEach((row, index) => {
           row.Rank = index + 1;
@@ -1950,9 +2354,8 @@ async function downloadPDFReport() {
       doc.text('Nominee', 30, yPos);
       doc.text('Department', 70, yPos);
       doc.text('Votes', 110, yPos);
-      doc.text('Avg', 130, yPos);
-      doc.text('Bonus', 150, yPos);
-      doc.text('Total', 170, yPos);
+      doc.text('Bonus', 130, yPos);
+      doc.text('Grand Total', 150, yPos);
       yPos += 5;
       doc.line(14, yPos, 196, yPos);
       yPos += 5;
@@ -1980,13 +2383,10 @@ async function downloadPDFReport() {
           });
         }
         
-        const average = voteCount > 0 ? (totalScore / voteCount).toFixed(2) : 0;
-        
         return {
           nomineeName: n.nomineeName || '',
           department: n.nomineeDept || '',
           totalScore: totalScore + totalBonus,
-          average,
           bonus: totalBonus,
           voteCount,
           image: n.image
@@ -2002,17 +2402,16 @@ async function downloadPDFReport() {
         }
         
         doc.text(String(index + 1), 14, yPos);
-        doc.text(row.nomineeName.substring(0, 12), 30, yPos);
-        doc.text(row.department.substring(0, 12), 70, yPos);
+        doc.text(row.nomineeName.substring(0, 15), 30, yPos);
+        doc.text(row.department.substring(0, 15), 70, yPos);
         doc.text(String(row.voteCount), 110, yPos);
-        doc.text(String(row.average), 130, yPos);
-        doc.text(String(row.bonus > 0 ? '+' + row.bonus : 0), 150, yPos);
-        doc.text(String(row.totalScore), 170, yPos);
+        doc.text(String(row.bonus > 0 ? '+' + row.bonus : 0), 130, yPos);
+        doc.text(String(row.totalScore), 150, yPos);
         
         if (row.image) {
           try {
             const imgData = row.image;
-            doc.addImage(imgData, 'JPEG', 190, yPos - 5, 8, 8);
+            doc.addImage(imgData, 'JPEG', 175, yPos - 5, 8, 8);
           } catch (e) {
             // Ignore image errors
           }
