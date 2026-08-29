@@ -412,7 +412,7 @@ textarea{resize:vertical;min-height:100px;}
         <div class="progress-container"><div class="progress-bar" id="progress-fill" style="width:0%"></div></div>
         <div class="category-tabs" id="cat-tabs"></div>
         <div id="nominee-list"></div>
-        <button class="btn btn-success btn-full" onclick="submitVotes()" style="margin-top:25px;">✅ Submit Votes</button>
+        <button id="submit-votes-btn" class="btn btn-success btn-full" onclick="submitVotes()" style="display:none; margin-top:25px;">✅ Submit Votes</button>
       </div>
     </div>
   </div>
@@ -1540,8 +1540,31 @@ function updateProgress() {
   const allUniqueNominees = new Set();
   categories.forEach(c => { nominations.filter(n => n.category === c.name).forEach(n => allUniqueNominees.add(n.nomineeName.toLowerCase().trim() + '_' + c.name)); });
   categories.forEach(c => { if(voterRatings[c.name]) uniqueRated += Object.keys(voterRatings[c.name]).length; });
+  
   document.getElementById('progress-text').innerText = uniqueRated + ' active votes cast';
   document.getElementById('progress-fill').style.width = (allUniqueNominees.size > 0 ? (uniqueRated / allUniqueNominees.size * 100) : 0) + '%';
+  
+  // Check if all available categories with nominees have at least one rating
+  let allCategoriesRated = categories.length > 0;
+  let hasAnyNominees = false;
+  categories.forEach(c => {
+    const hasNominees = nominations.some(n => n.category === c.name);
+    if (hasNominees) {
+      hasAnyNominees = true;
+      if (!voterRatings[c.name] || Object.keys(voterRatings[c.name]).length === 0) {
+        allCategoriesRated = false;
+      }
+    }
+  });
+  
+  const submitBtn = document.getElementById('submit-votes-btn');
+  if (submitBtn) {
+    if (hasAnyNominees && allCategoriesRated) {
+      submitBtn.style.display = 'flex';
+    } else {
+      submitBtn.style.display = 'none';
+    }
+  }
 }
 
 function submitVotes() {
