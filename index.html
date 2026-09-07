@@ -182,6 +182,40 @@ textarea{resize:vertical;min-height:100px;}
 .rating-1{background:#f8d7da;color:#721c24;}
 .bonus-badge{display:inline-block;padding:3px 8px;border-radius:4px;background:#e0d8e0;color:var(--brand);font-weight:bold;font-size:0.85rem;}
 
+/* ============ ADMIN TABS ============ */
+.admin-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 10px;
+}
+.admin-tab {
+  padding: 12px 20px;
+  background: #f0e8f0;
+  color: var(--brand);
+  border: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+.admin-tab:hover, .admin-tab.active {
+  background: var(--brand);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(109,48,99,0.2);
+}
+.admin-tab-content {
+  display: none;
+  animation: fadeIn 0.4s;
+}
+.admin-tab-content.active {
+  display: block;
+}
+
 /* ============ RESPONSIVE ============ */
 @media(max-width:900px){
   .home-hero{padding:40px 22px;}
@@ -420,7 +454,7 @@ textarea{resize:vertical;min-height:100px;}
   <!-- ADMIN TAB -->
   <div id="tab-admin" class="tab-content">
     <div class="card">
-      <h2>️ Admin Dashboard</h2>
+      <h2>🛡️ Admin Dashboard</h2>
       
       <div class="period-selector">
         <label style="color:#fff;font-weight:bold;">Select Award Period:</label>
@@ -429,150 +463,243 @@ textarea{resize:vertical;min-height:100px;}
         <button onclick="switchPeriod()">Switch Period</button>
         <span id="display-current-period" style="margin-left:auto;color:#fff;font-weight:bold;"></span>
       </div>
-      
-      <div class="stats-grid">
-        <div class="stat-card"><div class="number" id="stat-nominations">0</div><div class="label">Total Nominations</div></div>
-        <div class="stat-card"><div class="number" id="stat-votes">0</div><div class="label">Total Votes Cast</div></div>
-        <div class="stat-card"><div class="number" id="stat-voters">0</div><div class="label">Unique Voters</div></div>
-        <div class="stat-card"><div class="number" id="stat-categories">0</div><div class="label">Award Categories</div></div>
+
+      <!-- ADMIN TABS NAVIGATION -->
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchAdminTab('dashboard', this)">📊 Dashboard & Results</button>
+        <button class="admin-tab" onclick="switchAdminTab('analysis', this)">📈 Analysis & Reports</button>
+        <button class="admin-tab" onclick="switchAdminTab('management', this)">📝 Nominations & Votes</button>
+        <button class="admin-tab" onclick="switchAdminTab('settings', this)">⚙️ Settings & Data</button>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px;margin-top:30px;">
-        <div>
-          <h3 style="color:var(--brand);margin-bottom:15px;">📊 Live Nominations</h3>
-          <div class="category-tabs" id="nomination-cat-tabs"></div>
-          <div id="admin-nominations"></div>
+      <!-- TAB 1: Dashboard & Results -->
+      <div id="admin-tab-dashboard" class="admin-tab-content active">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="number" id="stat-nominations">0</div><div class="label">Total Nominations</div></div>
+          <div class="stat-card"><div class="number" id="stat-votes">0</div><div class="label">Total Votes Cast</div></div>
+          <div class="stat-card"><div class="number" id="stat-voters">0</div><div class="label">Unique Voters</div></div>
+          <div class="stat-card"><div class="number" id="stat-categories">0</div><div class="label">Award Categories</div></div>
         </div>
-        <div>
-          <h3 style="color:var(--brand);margin-bottom:15px;">🏆 Voting Results</h3>
-          <div class="category-tabs" id="admin-cat-tabs"></div>
-          <div id="admin-results"></div>
-        </div>
-      </div>
 
-      <!-- CATEGORY SUMMARY MATRIX -->
-      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">📋 Category Summary Matrix (Leader-wise Ratings)</h3>
-        <p style="color:#666;margin-bottom:15px;">Select a category to view the leader-wise rating matrix with Bonus Points and Grand Total.</p>
-        <div class="analysis-controls">
-          <div class="form-group">
-            <label>Select Category</label>
-            <select id="matrix-category-select" onchange="renderCategoryMatrix()"></select>
-          </div>
-          <div class="form-group" style="flex:0 0 auto;">
-            <label>&nbsp;</label>
-            <button class="btn btn-info" onclick="downloadMatrixPDF()">📄 Download PDF</button>
-          </div>
-        </div>
-        <div class="matrix-wrap" id="matrix-table-container"></div>
-      </div>
-
-      <!-- Detailed Voting Analysis -->
-      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">📊 Detailed Voting Analysis</h3>
-        <p style="color:#666;margin-bottom:15px;">View detailed voting patterns leader-wise or nominee-wise with customizable filters.</p>
-        <div class="analysis-controls">
-          <div class="form-group">
-            <label>Filter by Category</label>
-            <select id="analysis-category-filter" onchange="renderDetailedAnalysis()"><option value="all">All Categories</option></select>
-          </div>
-          <div class="form-group">
-            <label>Search Leader/Nominee</label>
-            <input type="text" id="analysis-search" placeholder="Type to search..." oninput="renderDetailedAnalysis()">
-          </div>
-          <div class="form-group">
-            <label>Sort By</label>
-            <select id="analysis-sort" onchange="renderDetailedAnalysis()">
-              <option value="timestamp-desc">Latest First</option>
-              <option value="timestamp-asc">Oldest First</option>
-              <option value="rating-desc">Highest Rating</option>
-              <option value="rating-asc">Lowest Rating</option>
-              <option value="leader">Leader Name</option>
-              <option value="nominee">Nominee Name</option>
-            </select>
-          </div>
-        </div>
-        <div class="view-toggle">
-          <button class="view-toggle-btn active" id="view-leader-btn" onclick="switchDetailedView('leader')">👤 Leader-wise View</button>
-          <button class="view-toggle-btn" id="view-nominee-btn" onclick="switchDetailedView('nominee')">🏆 Nominee-wise View</button>
-        </div>
-        <div class="analysis-summary" id="analysis-summary"></div>
-        <div class="detailed-table">
-          <table class="data-table" id="detailed-analysis-table">
-            <thead id="detailed-table-head"></thead>
-            <tbody id="detailed-table-body"></tbody>
-          </table>
-        </div>
-        <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-success" onclick="downloadDetailedExcel()">📥 Download Excel Report</button>
-          <button class="btn btn-info" onclick="downloadDetailedPDF()">📄 Download PDF Report</button>
-          <button class="btn btn-outline" onclick="printDetailedAnalysis()">🖨️ Print View</button>
-        </div>
-      </div>
-
-      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">️ Vote Management</h3>
-        <p style="color:#666;margin-bottom:15px;">View, edit, or delete individual votes. Click "View Details" to see and modify ratings and bonuses.</p>
-        <div id="admin-votes-list"></div>
-      </div>
-
-      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">📥 Data Management</h3>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-outline" onclick="exportData()"> Export All Data (Excel)</button>
-          <button class="btn btn-outline" onclick="downloadReport()"> Download Report (Excel)</button>
-          <button class="btn btn-outline" onclick="downloadPDFReport()">📄 Download Report (PDF)</button>
-          <button class="btn btn-danger" onclick="showResetModal()"> Reset for New Month</button>
-          <button class="btn btn-danger" onclick="resetAllData()">⚠️ Delete All Data</button>
-        </div>
-      </div>
-
-      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">🎨 Branding & Customization</h3>
-        <div class="settings-grid">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px;margin-top:30px;">
           <div>
-            <div class="form-group"><label>Hotel Name</label><input type="text" id="setting-hotel-name" placeholder="e.g., Grand Plaza Hotel"></div>
-            <div class="form-group"><label>Hotel Subheading</label><input type="text" id="setting-hotel-subheading" placeholder="e.g., Employee of the Month Awards"></div>
-            <div class="form-group">
-              <label>Hotel Logo</label>
-              <div class="file-upload" id="logo-drop"><p style="font-size:2rem;"></p><p>Click to upload logo</p><input type="file" id="logo-file" accept="image/*"></div>
-              <img id="logo-preview" style="max-width:150px;margin-top:10px;border-radius:50%;display:none;">
-            </div>
-            <div class="form-group">
-              <label>Background Image</label>
-              <div class="file-upload" id="bg-drop"><p style="font-size:2rem;"></p><p>Click to upload background</p><input type="file" id="bg-file" accept="image/*"></div>
-              <img id="bg-preview" style="max-width:100%;margin-top:10px;border-radius:8px;display:none;">
-            </div>
-            <button class="btn btn-primary" onclick="saveBranding()" style="margin-top:10px;">💾 Save Branding</button>
+            <h3 style="color:var(--brand);margin-bottom:15px;">📊 Live Nominations</h3>
+            <div class="category-tabs" id="nomination-cat-tabs"></div>
+            <div id="admin-nominations"></div>
           </div>
           <div>
-            <h4 style="color:var(--brand);margin-bottom:12px;">Page Customization</h4>
-            <div class="form-group"><label>Nomination Page Title</label><input type="text" id="setting-nom-title" placeholder="📝 Submit a Nomination"></div>
-            <div class="form-group"><label>Nomination Page Subtitle</label><textarea id="setting-nom-subtitle" rows="2"></textarea></div>
-            <div class="form-group"><label>Voting Page Title</label><input type="text" id="setting-vote-title" placeholder="🗳️ Cast Your Vote"></div>
-            <div class="form-group"><label>Voting Page Subtitle</label><textarea id="setting-vote-subtitle" rows="2"></textarea></div>
-            <button class="btn btn-primary" onclick="savePageSettings()" style="margin-top:10px;">💾 Save Page Settings</button>
+            <h3 style="color:var(--brand);margin-bottom:15px;">🏆 Voting Results</h3>
+            <div class="category-tabs" id="admin-cat-tabs"></div>
+            <div id="admin-results"></div>
           </div>
         </div>
       </div>
 
-      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Voting Schedule Control</h3>
-        <div class="settings-grid">
-          <div class="form-group"><label>Voting Start Date & Time</label><input type="datetime-local" id="voting-start-time"></div>
-          <div class="form-group"><label>Voting End Date & Time</label><input type="datetime-local" id="voting-end-time"></div>
+      <!-- TAB 2: Analysis & Reports -->
+      <div id="admin-tab-analysis" class="admin-tab-content">
+        <div style="margin-top:10px;">
+          <h3 style="color:var(--brand);margin-bottom:15px;">📋 Category Summary Matrix (Leader-wise Ratings)</h3>
+          <p style="color:#666;margin-bottom:15px;">Select a category to view the leader-wise rating matrix with Bonus Points and Grand Total.</p>
+          <div class="analysis-controls">
+            <div class="form-group">
+              <label>Select Category</label>
+              <select id="matrix-category-select" onchange="renderCategoryMatrix()"></select>
+            </div>
+            <div class="form-group" style="flex:0 0 auto;">
+              <label>&nbsp;</label>
+              <button class="btn btn-info" onclick="downloadMatrixPDF()">📄 Download PDF</button>
+            </div>
+          </div>
+          <div class="matrix-wrap" id="matrix-table-container"></div>
         </div>
-        <button class="btn btn-primary" onclick="saveVotingSchedule()" style="margin-top:10px;">💾 Save Voting Schedule</button>
-        <p style="margin-top:10px;color:#666;font-size:0.9rem;">Note: Users will only be able to cast votes within this time window. If no schedule is set, voting will be disabled.</p>
+
+        <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+          <h3 style="color:var(--brand);margin-bottom:15px;">📊 Detailed Voting Analysis</h3>
+          <p style="color:#666;margin-bottom:15px;">View detailed voting patterns leader-wise or nominee-wise with customizable filters.</p>
+          <div class="analysis-controls">
+            <div class="form-group">
+              <label>Filter by Category</label>
+              <select id="analysis-category-filter" onchange="renderDetailedAnalysis()"><option value="all">All Categories</option></select>
+            </div>
+            <div class="form-group">
+              <label>Search Leader/Nominee</label>
+              <input type="text" id="analysis-search" placeholder="Type to search..." oninput="renderDetailedAnalysis()">
+            </div>
+            <div class="form-group">
+              <label>Sort By</label>
+              <select id="analysis-sort" onchange="renderDetailedAnalysis()">
+                <option value="timestamp-desc">Latest First</option>
+                <option value="timestamp-asc">Oldest First</option>
+                <option value="rating-desc">Highest Rating</option>
+                <option value="rating-asc">Lowest Rating</option>
+                <option value="leader">Leader Name</option>
+                <option value="nominee">Nominee Name</option>
+              </select>
+            </div>
+          </div>
+          <div class="view-toggle">
+            <button class="view-toggle-btn active" id="view-leader-btn" onclick="switchDetailedView('leader')">👤 Leader-wise View</button>
+            <button class="view-toggle-btn" id="view-nominee-btn" onclick="switchDetailedView('nominee')">🏆 Nominee-wise View</button>
+          </div>
+          <div class="analysis-summary" id="analysis-summary"></div>
+          <div class="detailed-table">
+            <table class="data-table" id="detailed-analysis-table">
+              <thead id="detailed-table-head"></thead>
+              <tbody id="detailed-table-body"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-success" onclick="downloadDetailedExcel()">📥 Download Excel Report</button>
+            <button class="btn btn-info" onclick="downloadDetailedPDF()">📄 Download PDF Report</button>
+            <button class="btn btn-outline" onclick="printDetailedAnalysis()">🖨️ Print View</button>
+          </div>
+        </div>
       </div>
 
-      <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
-        <h3 style="color:var(--brand);margin-bottom:15px;"> Category Management (Month-Wise)</h3>
-        <div style="display:flex;gap:10px;margin-bottom:15px;">
-          <input type="text" id="new-category" placeholder="New category name" style="flex:1;">
-          <button class="btn btn-primary" onclick="addCategory()">Add Category</button>
+      <!-- TAB 3: Nominations & Votes -->
+      <div id="admin-tab-management" class="admin-tab-content">
+        <!-- Admin Nomination Submission -->
+        <div style="margin-top:10px; padding:25px; background:#faf7fa; border-radius:12px; border:1px solid var(--border);">
+          <h3 style="color:var(--brand);margin-bottom:15px;">📝 Submit Nomination on Behalf of Someone</h3>
+          <p class="subtitle" style="margin-bottom:20px;">As an admin, you can submit a nomination on behalf of any leader/nominator.</p>
+          <div class="settings-grid">
+            <div>
+              <div class="form-group"><label>Leader/Nominator Name *</label><input type="text" id="admin-nom-leader-name" placeholder="Enter leader's full name"></div>
+              <div class="form-group">
+                <label>Leader Department *</label>
+                <select id="admin-nom-leader-dept">
+                  <option value="">Select Department</option>
+                  <option value="Executive Office">Executive Office</option>
+                  <option value="Human Resources">Human Resources</option>
+                  <option value="Front Office">Front Office</option>
+                  <option value="F&B Service">F&B Service</option>
+                  <option value="Kitchen">Kitchen</option>
+                  <option value="Kitchen Stewarding">Kitchen Stewarding</option>
+                  <option value="Housekeeping & Laundry">Housekeeping & Laundry</option>
+                  <option value="Security">Security</option>
+                  <option value="Spa">Spa</option>
+                  <option value="Sales & Marketing">Sales & Marketing</option>
+                  <option value="Engineering & Landscaping">Engineering & Landscaping</option>
+                  <option value="Landscaping">Landscaping</option>
+                  <option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option>
+                  <option value="Sustainability">Sustainability</option>
+                  <option value="Reservations">Reservations</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Nominee Full Name *</label><input type="text" id="admin-nom-name" placeholder="Enter nominee's full name"></div>
+              <div class="form-group">
+                <label>Nominee Department *</label>
+                <select id="admin-nom-dept">
+                  <option value="">Select Department</option>
+                  <option value="Executive Office">Executive Office</option>
+                  <option value="Human Resources">Human Resources</option>
+                  <option value="Front Office">Front Office</option>
+                  <option value="F&B Service">F&B Service</option>
+                  <option value="Kitchen">Kitchen</option>
+                  <option value="Kitchen Stewarding">Kitchen Stewarding</option>
+                  <option value="Housekeeping & Laundry">Housekeeping & Laundry</option>
+                  <option value="Security">Security</option>
+                  <option value="Spa">Spa</option>
+                  <option value="Sales & Marketing">Sales & Marketing</option>
+                  <option value="Engineering & Landscaping">Engineering & Landscaping</option>
+                  <option value="Landscaping">Landscaping</option>
+                  <option value="Finance, Purchasing & IT">Finance, Purchasing & IT</option>
+                  <option value="Sustainability">Sustainability</option>
+                  <option value="Reservations">Reservations</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div class="form-group">
+                <label>Award Category *</label>
+                <select id="admin-nom-category"><option value="">-- Select Award Category --</option></select>
+              </div>
+              <div class="form-group">
+                <label>Reason for Nomination *</label>
+                <textarea id="admin-nom-desc" placeholder="Describe why this person deserves this award."></textarea>
+              </div>
+              <div class="form-group">
+                <label>Profile Picture (Optional)</label>
+                <div class="file-upload" id="admin-pic-drop">
+                  <p style="font-size:2.5rem;">📷</p>
+                  <p>Click or drag photo here</p>
+                  <input type="file" id="admin-pic-file" accept="image/*">
+                </div>
+                <img id="admin-pic-preview" style="max-width:200px;margin-top:10px;border-radius:8px;display:none;">
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="submitAdminNomination()" style="margin-top:15px;">✅ Submit Nomination</button>
         </div>
-        <div id="category-list"></div>
+
+        <!-- Vote Management -->
+        <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+          <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Vote Management</h3>
+          <p style="color:#666;margin-bottom:15px;">View, edit, or delete individual votes. Click "View Details" to see and modify ratings and bonuses.</p>
+          <div id="admin-votes-list"></div>
+        </div>
+      </div>
+
+      <!-- TAB 4: Settings & Data -->
+      <div id="admin-tab-settings" class="admin-tab-content">
+        <div style="margin-top:10px;">
+          <h3 style="color:var(--brand);margin-bottom:15px;">📥 Data Management</h3>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-outline" onclick="exportData()"> Export All Data (Excel)</button>
+            <button class="btn btn-outline" onclick="downloadReport()"> Download Report (Excel)</button>
+            <button class="btn btn-outline" onclick="downloadPDFReport()">📄 Download Report (PDF)</button>
+            <button class="btn btn-danger" onclick="showResetModal()"> Reset for New Month</button>
+            <button class="btn btn-danger" onclick="resetAllData()">⚠️ Delete All Data</button>
+          </div>
+        </div>
+
+        <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+          <h3 style="color:var(--brand);margin-bottom:15px;">🎨 Branding & Customization</h3>
+          <div class="settings-grid">
+            <div>
+              <div class="form-group"><label>Hotel Name</label><input type="text" id="setting-hotel-name" placeholder="e.g., Grand Plaza Hotel"></div>
+              <div class="form-group"><label>Hotel Subheading</label><input type="text" id="setting-hotel-subheading" placeholder="e.g., Employee of the Month Awards"></div>
+              <div class="form-group">
+                <label>Hotel Logo</label>
+                <div class="file-upload" id="logo-drop"><p style="font-size:2rem;"></p><p>Click to upload logo</p><input type="file" id="logo-file" accept="image/*"></div>
+                <img id="logo-preview" style="max-width:150px;margin-top:10px;border-radius:50%;display:none;">
+              </div>
+              <div class="form-group">
+                <label>Background Image</label>
+                <div class="file-upload" id="bg-drop"><p style="font-size:2rem;"></p><p>Click to upload background</p><input type="file" id="bg-file" accept="image/*"></div>
+                <img id="bg-preview" style="max-width:100%;margin-top:10px;border-radius:8px;display:none;">
+              </div>
+              <button class="btn btn-primary" onclick="saveBranding()" style="margin-top:10px;">💾 Save Branding</button>
+            </div>
+            <div>
+              <h4 style="color:var(--brand);margin-bottom:12px;">Page Customization</h4>
+              <div class="form-group"><label>Nomination Page Title</label><input type="text" id="setting-nom-title" placeholder="📝 Submit a Nomination"></div>
+              <div class="form-group"><label>Nomination Page Subtitle</label><textarea id="setting-nom-subtitle" rows="2"></textarea></div>
+              <div class="form-group"><label>Voting Page Title</label><input type="text" id="setting-vote-title" placeholder="🗳️ Cast Your Vote"></div>
+              <div class="form-group"><label>Voting Page Subtitle</label><textarea id="setting-vote-subtitle" rows="2"></textarea></div>
+              <button class="btn btn-primary" onclick="savePageSettings()" style="margin-top:10px;">💾 Save Page Settings</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+          <h3 style="color:var(--brand);margin-bottom:15px;">🗳️ Voting Schedule Control</h3>
+          <div class="settings-grid">
+            <div class="form-group"><label>Voting Start Date & Time</label><input type="datetime-local" id="voting-start-time"></div>
+            <div class="form-group"><label>Voting End Date & Time</label><input type="datetime-local" id="voting-end-time"></div>
+          </div>
+          <button class="btn btn-primary" onclick="saveVotingSchedule()" style="margin-top:10px;">💾 Save Voting Schedule</button>
+          <p style="margin-top:10px;color:#666;font-size:0.9rem;">Note: Users will only be able to cast votes within this time window. If no schedule is set, voting will be disabled.</p>
+        </div>
+
+        <div style="margin-top:30px;padding-top:25px;border-top:2px solid var(--border);">
+          <h3 style="color:var(--brand);margin-bottom:15px;">🏷️ Category Management (Month-Wise)</h3>
+          <div style="display:flex;gap:10px;margin-bottom:15px;">
+            <input type="text" id="new-category" placeholder="New category name" style="flex:1;">
+            <button class="btn btn-primary" onclick="addCategory()">Add Category</button>
+          </div>
+          <div id="category-list"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -656,6 +783,7 @@ let tempPic = '';
 let tempEditPic = '';
 let tempLogo = '';
 let tempBg = '';
+let tempAdminPic = '';
 let currentVoter = {name: '', dept: ''};
 let voterRatings = {};
 let currentLeader = {name: '', dept: ''};
@@ -679,6 +807,13 @@ function toggleNav(){
   const hb=document.getElementById('hamburger-btn');
   navContent.classList.toggle('open');
   hb.textContent = navContent.classList.contains('open') ? '✕' : '☰';
+}
+
+function switchAdminTab(tab, btn) {
+  document.querySelectorAll('.admin-tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('admin-tab-' + tab).classList.add('active');
+  if(btn) btn.classList.add('active');
 }
 
 function populatePeriodSelectors() {
@@ -753,6 +888,7 @@ function loadCategoriesForPeriod() {
     const editCatSelect = document.getElementById('edit-nom-category');
     if(editCatSelect) editCatSelect.innerHTML = catOptions;
     populateMatrixCategorySelect();
+    populateAdminCategorySelect();
     const analysisCatFilter = document.getElementById('analysis-category-filter');
     if(analysisCatFilter) analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     if(document.getElementById('tab-admin').classList.contains('active')) renderCategoryList();
@@ -766,6 +902,12 @@ function populateMatrixCategorySelect() {
   select.innerHTML = '<option value="">-- Select Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
   if (current && categories.some(c => c.name === current)) select.value = current;
   renderCategoryMatrix();
+}
+
+function populateAdminCategorySelect() {
+  const select = document.getElementById('admin-nom-category');
+  if(!select) return;
+  select.innerHTML = '<option value="">-- Select Award Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 }
 
 function addCategory() {
@@ -782,6 +924,7 @@ function addCategory() {
     const catOptions = '<option value="">-- Select Award Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     document.getElementById('nom-category').innerHTML = catOptions;
     populateMatrixCategorySelect();
+    populateAdminCategorySelect();
     const analysisCatFilter = document.getElementById('analysis-category-filter');
     if(analysisCatFilter) analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     showAlert('Category added!', 'success');
@@ -797,6 +940,7 @@ function deleteCategory(id) {
     renderCategoryList();
     document.getElementById('nom-category').innerHTML = '<option value="">-- Select Award Category --</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     populateMatrixCategorySelect();
+    populateAdminCategorySelect();
     const analysisCatFilter = document.getElementById('analysis-category-filter');
     if(analysisCatFilter) analysisCatFilter.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     showAlert('Category deleted.', 'success');
@@ -872,7 +1016,6 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.nav-btn').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   if(btn) btn.classList.add('active');
-  // Close mobile nav after selection
   const navContent = document.getElementById('nav-content');
   if(navContent) navContent.classList.remove('open');
   const hb = document.getElementById('hamburger-btn'); if(hb) hb.textContent = '☰';
@@ -947,7 +1090,7 @@ function closeAdminModal() { document.getElementById('admin-modal').classList.re
 
 function verifyAdmin() {
   const password = document.getElementById('admin-password').value;
-  if(password === 'Admin@2026') { closeAdminModal(); switchTab('admin', document.getElementById('nav-admin')); loadAdminDashboard(); }
+  if(password === '872171') { closeAdminModal(); switchTab('admin', document.getElementById('nav-admin')); loadAdminDashboard(); }
   else showAlert('Invalid password!', 'error');
 }
 
@@ -1284,6 +1427,42 @@ function printDetailedAnalysis() {
   setTimeout(() => printWindow.print(), 500);
 }
 
+// ============ ADMIN NOMINATION SUBMISSION ============
+function submitAdminNomination() {
+  const leaderName = document.getElementById('admin-nom-leader-name').value.trim();
+  const leaderDept = document.getElementById('admin-nom-leader-dept').value.trim();
+  const nomName = document.getElementById('admin-nom-name').value.trim();
+  const nomDept = document.getElementById('admin-nom-dept').value.trim();
+  const category = document.getElementById('admin-nom-category').value;
+  const desc = document.getElementById('admin-nom-desc').value.trim();
+
+  if(!leaderName || !leaderDept || !nomName || !nomDept || !category || !desc) return showAlert('Please fill all required fields.', 'error');
+
+  const nomination = { 
+    id: Date.now().toString(), 
+    leaderName: leaderName, 
+    leaderDept: leaderDept, 
+    nomineeName: nomName, 
+    nomineeDept: nomDept, 
+    category: category, 
+    description: desc, 
+    image: tempAdminPic || '', 
+    timestamp: new Date().toISOString(),
+    submittedByAdmin: true
+  };
+  db.ref('nominations/' + currentPeriod.replace(' ', '_') + '/' + nomination.id).set(nomination)
+    .then(() => {
+      showAlert('Nomination submitted successfully on behalf of ' + leaderName + '!', 'success');
+      ['admin-nom-leader-name', 'admin-nom-name', 'admin-nom-desc'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('admin-nom-leader-dept').selectedIndex = 0;
+      document.getElementById('admin-nom-dept').selectedIndex = 0;
+      document.getElementById('admin-nom-category').selectedIndex = 0;
+      document.getElementById('admin-pic-preview').style.display = 'none';
+      tempAdminPic = '';
+    })
+    .catch(err => showAlert('Error: ' + err.message, 'error'));
+}
+
 // ============ VOTE MANAGEMENT ============
 function renderAdminVotes() {
   const container = document.getElementById('admin-votes-list');
@@ -1544,7 +1723,6 @@ function updateProgress() {
   document.getElementById('progress-text').innerText = uniqueRated + ' active votes cast';
   document.getElementById('progress-fill').style.width = (allUniqueNominees.size > 0 ? (uniqueRated / allUniqueNominees.size * 100) : 0) + '%';
   
-  // Check if all available categories with nominees have at least one rating
   let allCategoriesRated = categories.length > 0;
   let hasAnyNominees = false;
   categories.forEach(c => {
@@ -1755,7 +1933,7 @@ function handlePicFile(f) {
   r.readAsDataURL(f);
 }
 const logoDrop = document.getElementById('logo-drop');
-const logoFile = document.getElementById('brand-logo-file');
+const logoFile = document.getElementById('logo-file');
 const logoPreview = document.getElementById('logo-preview');
 logoDrop.onclick = () => logoFile.click();
 logoFile.onchange = e => { if(e.target.files[0]) handleLogoFile(e.target.files[0]); };
@@ -1774,6 +1952,23 @@ function handleBgFile(f) {
   if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
   const r = new FileReader();
   r.onload = ev => { bgPreview.src = ev.target.result; bgPreview.style.display = 'block'; tempBg = ev.target.result; };
+  r.readAsDataURL(f);
+}
+
+const adminPicDrop = document.getElementById('admin-pic-drop');
+const adminPicFile = document.getElementById('admin-pic-file');
+const adminPicPreview = document.getElementById('admin-pic-preview');
+if (adminPicDrop && adminPicFile) {
+  adminPicDrop.onclick = () => adminPicFile.click();
+  adminPicDrop.ondragover = e => { e.preventDefault(); adminPicDrop.classList.add('dragover'); };
+  adminPicDrop.ondragleave = () => adminPicDrop.classList.remove('dragover');
+  adminPicDrop.ondrop = e => { e.preventDefault(); adminPicDrop.classList.remove('dragover'); if(e.dataTransfer.files[0]) handleAdminPicFile(e.dataTransfer.files[0]); };
+  adminPicFile.onchange = e => { if(e.target.files[0]) handleAdminPicFile(e.target.files[0]); };
+}
+function handleAdminPicFile(f) {
+  if(!f.type.startsWith('image/')) return showAlert('Please select an image.', 'error');
+  const r = new FileReader();
+  r.onload = ev => { adminPicPreview.src = ev.target.result; adminPicPreview.style.display = 'block'; tempAdminPic = ev.target.result; };
   r.readAsDataURL(f);
 }
 
