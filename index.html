@@ -466,7 +466,6 @@ textarea{resize:vertical;min-height:100px;}
         <button class="btn btn-info" onclick="showNominationPDFModal()">📄 Download PDF Report</button>
       </div>
       <p class="subtitle">Celebrate the outstanding team members nominated for this period's awards. Select a category below to filter.</p>
-      
       <div class="category-tabs" id="public-nom-cat-tabs"></div>
       <div id="public-nominations-list" class="nominee-grid"></div>
     </div>
@@ -2015,7 +2014,7 @@ function togglePdfCategorySelect() {
 async function generateNominationPDF() {
   try {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const option = document.getElementById('pdf-report-option').value;
     let nomsToPrint = [];
     
@@ -2031,6 +2030,7 @@ async function generateNominationPDF() {
       return;
     }
 
+    // Sort by category, then by nominee name
     nomsToPrint.sort((a, b) => {
       if (a.category === b.category) {
         return a.nomineeName.localeCompare(b.nomineeName);
@@ -2044,97 +2044,132 @@ async function generateNominationPDF() {
       }
       
       const n = nomsToPrint[i];
+      let currentY = 15;
       
-      // Header
-      doc.setFillColor(109, 48, 99);
-      doc.rect(0, 0, 210, 45, 'F');
+      // --- Page Header ---
+      doc.setFillColor(109, 48, 99); // Brand color
+      doc.rect(0, 0, 210, 40, 'F');
+      
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
-      doc.text("Nomination Report", 105, 22, { align: "center" });
-      doc.setFontSize(12);
+      doc.setFontSize(22);
+      doc.text("Nomination Report", 105, 18, { align: "center" });
+      
       doc.setFont("helvetica", "normal");
-      doc.text(`${currentPeriod}`, 105, 35, { align: "center" });
+      doc.setFontSize(12);
+      doc.text(`${currentPeriod}`, 105, 28, { align: "center" });
 
-      let yPos = 65;
+      currentY = 55;
 
-      // Photo
+      // --- Photo Section ---
+      const photoX = 75;
+      const photoY = currentY;
+      const photoSize = 50;
+      
       if (n.image) {
         try {
-          doc.addImage(n.image, 'JPEG', 75, yPos, 60, 60, undefined, 'FAST');
-          yPos += 70;
+          doc.addImage(n.image, 'JPEG', photoX, photoY, photoSize, photoSize, undefined, 'FAST');
         } catch (e) {
           console.error("Image error", e);
-          yPos += 10;
+          doc.setFillColor(240, 232, 240);
+          doc.roundedRect(photoX, photoY, photoSize, photoSize, 5, 5, 'F');
+          doc.setTextColor(109, 48, 99);
+          doc.setFontSize(24);
+          doc.text("👤", photoX + 25, photoY + 30, { align: "center" });
         }
       } else {
-        doc.setFillColor(224, 216, 224);
-        doc.roundedRect(75, yPos, 60, 60, 5, 5, 'F');
+        doc.setFillColor(240, 232, 240);
+        doc.roundedRect(photoX, photoY, photoSize, photoSize, 5, 5, 'F');
         doc.setTextColor(109, 48, 99);
-        doc.setFontSize(30);
-        doc.text("👤", 105, yPos + 40, { align: "center" });
-        yPos += 70;
+        doc.setFontSize(24);
+        doc.text("👤", photoX + 25, photoY + 30, { align: "center" });
       }
+      
+      currentY += photoSize + 15;
 
-      const drawSection = (title, content, subtitle = null, isLarge = false) => {
+      // --- Details Section ---
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(109, 48, 99);
+      doc.text(n.nomineeName, 105, currentY, { align: "center" });
+      currentY += 8;
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${n.nomineeDept || 'N/A'}`, 105, currentY, { align: "center" });
+      currentY += 15;
+
+      // Info Boxes
+      const drawInfoBox = (label, value, subValue = '') => {
         doc.setFillColor(245, 242, 246);
-        doc.roundedRect(20, yPos, 170, 12, 3, 3, 'F');
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(109, 48, 99);
-        doc.text(title.toUpperCase(), 25, yPos + 8);
-        yPos += 20;
-
-        doc.setFontSize(isLarge ? 14 : 14);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(51, 51, 51);
+        doc.roundedRect(20, currentY, 170, subValue ? 20 : 16, 3, 3, 'F');
         
-        if (isLarge) {
-          const splitText = doc.splitTextToSize(content || 'N/A', 160);
-          if (yPos + (splitText.length * 7) > 270) {
-            doc.addPage();
-            yPos = 20;
-            doc.setFillColor(109, 48, 99);
-            doc.rect(0, 0, 210, 40, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.text(`${currentPeriod} (Continued)`, 105, 30, { align: "center" });
-            yPos = 60;
-            
-            doc.setFillColor(245, 242, 246);
-            doc.roundedRect(20, yPos, 170, 12, 3, 3, 'F');
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(109, 48, 99);
-            doc.text(title.toUpperCase() + " (Continued)", 25, yPos + 8);
-            yPos += 20;
-            
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(51, 51, 51);
-          }
-          doc.text(splitText, 25, yPos);
-          yPos += (splitText.length * 7) + 15;
-        } else {
-          doc.text(content || 'N/A', 25, yPos);
-          yPos += 10;
-          if (subtitle) {
-             doc.setFontSize(12);
-             doc.setFont("helvetica", "normal");
-             doc.setTextColor(100, 100, 100);
-             doc.text(subtitle, 25, yPos);
-             yPos += 15;
-          } else {
-             yPos += 10;
-          }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(109, 48, 99);
+        doc.text(label.toUpperCase(), 25, currentY + 6);
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(51, 51, 51);
+        doc.text(value || 'N/A', 25, currentY + 12);
+        
+        if (subValue) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text(subValue, 25, currentY + 18);
         }
+        currentY += (subValue ? 26 : 22);
       };
 
-      drawSection("Award Category", n.category);
-      drawSection("Nominee Name", n.nomineeName, `Department: ${n.nomineeDept || 'N/A'}`, true);
-      drawSection("Nominated By", n.leaderName, `Department: ${n.leaderDept || 'N/A'}`, false);
-      drawSection("Full Nomination Story", n.description || 'No description provided.', null, true);
+      drawInfoBox("Award Category", n.category);
+      drawInfoBox("Nominated By", n.leaderName, `Department: ${n.leaderDept || 'N/A'}`);
+
+      // --- Nomination Story Section ---
+      currentY += 5;
+      doc.setFillColor(245, 242, 246);
+      doc.roundedRect(20, currentY, 170, 12, 3, 3, 'F');
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(109, 48, 99);
+      doc.text("FULL NOMINATION STORY", 25, currentY + 8);
+      currentY += 18;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(51, 51, 51);
+      
+      const storyText = n.description || 'No description provided.';
+      const splitStory = doc.splitTextToSize(storyText, 160);
+      
+      for (let j = 0; j < splitStory.length; j++) {
+        if (currentY > 270) {
+          doc.addPage();
+          // Add header to new page
+          doc.setFillColor(109, 48, 99);
+          doc.rect(0, 0, 210, 20, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.text(`${currentPeriod} - ${n.nomineeName} (Continued)`, 105, 13, { align: "center" });
+          currentY = 30;
+        }
+        doc.text(splitStory[j], 25, currentY);
+        currentY += 6;
+      }
+    }
+
+    // --- Add Footers to all pages ---
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= pageCount; p++) {
+      doc.setPage(p);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${p} of ${pageCount}`, 105, 290, { align: "center" });
+      doc.text("Confidential - Employee Recognition Program", 105, 295, { align: "center" });
     }
 
     const fileName = option === 'all' 
