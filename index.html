@@ -267,6 +267,7 @@ textarea{resize:vertical;min-height:100px;}
       <button class="nav-btn active" id="nav-home" onclick="switchTab('home', this)"> Home</button>
       <button class="nav-btn" id="nav-nominate" onclick="switchTab('nominate', this)">📝 Submit Nomination</button>
       <button class="nav-btn" id="nav-vote" onclick="switchTab('vote', this)">🗳️ Cast Vote</button>
+      <button class="nav-btn" id="nav-view-noms" onclick="switchTab('view-noms', this)">👁️ View Nominations</button>
       <button class="nav-btn" id="nav-admin" onclick="showAdminLogin()" style="margin-left:auto;">🛡️ Admin Portal</button>
       <div class="user-info hidden" id="user-info">
         <span id="user-name-display">👤 User</span>
@@ -286,13 +287,19 @@ textarea{resize:vertical;min-height:100px;}
       <div class="home-hero-content">
         <div class="home-badge">🏆 Employee Recognition Program</div>
         <h2>Celebrate Excellence.<br>Reward Greatness.</h2>
-        <p>Welcome! Nominate an outstanding team member or cast your vote for this period's awards. Choose an option below to continue.</p>
+        <p>Welcome! Nominate an outstanding team member, view current nominations, or cast your vote for this period's awards. Choose an option below to continue.</p>
         <div class="home-tabs">
           <button class="home-tab-card" onclick="switchTab('nominate', document.getElementById('nav-nominate'))">
             <span class="home-tab-arrow">→</span>
             <span class="home-tab-icon">📝</span>
             <span class="home-tab-title">Submit Nomination</span>
             <span class="home-tab-desc">Recognize an outstanding team member for an award.</span>
+          </button>
+          <button class="home-tab-card" onclick="switchTab('view-noms', document.getElementById('nav-view-noms'))">
+            <span class="home-tab-arrow">→</span>
+            <span class="home-tab-icon">👁️</span>
+            <span class="home-tab-title">View Nominations</span>
+            <span class="home-tab-desc">Browse all nominations for the current period.</span>
           </button>
           <button class="home-tab-card" onclick="switchTab('vote', document.getElementById('nav-vote'))">
             <span class="home-tab-arrow">→</span>
@@ -448,6 +455,20 @@ textarea{resize:vertical;min-height:100px;}
         <div id="nominee-list"></div>
         <button id="submit-votes-btn" class="btn btn-success btn-full" onclick="submitVotes()" style="display:none; margin-top:25px;">✅ Submit Votes</button>
       </div>
+    </div>
+  </div>
+
+  <!-- VIEW NOMINATIONS TAB (PUBLIC) -->
+  <div id="tab-view-noms" class="tab-content">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:20px;">
+        <h2 style="color:var(--brand); margin:0;">🏆 Current Nominations</h2>
+        <button class="btn btn-info" onclick="showNominationPDFModal()">📄 Download PDF Report</button>
+      </div>
+      <p class="subtitle">Celebrate the outstanding team members nominated for this period's awards. Select a category below to filter.</p>
+      
+      <div class="category-tabs" id="public-nom-cat-tabs"></div>
+      <div id="public-nominations-list" class="nominee-grid"></div>
     </div>
   </div>
 
@@ -813,6 +834,7 @@ let currentNominationCategory = 'all';
 let currentDetailedView = 'leader';
 let detailedAnalysisData = [];
 let nominationsExpanded = false;
+let currentPublicCategory = 'all';
 
 document.addEventListener('DOMContentLoaded', () => {
   populatePeriodSelectors();
@@ -1042,6 +1064,7 @@ function switchTab(tab, btn) {
   window.scrollTo({top:0, behavior:'smooth'});
   if(tab === 'nominate') { resetNominationForm(); loadCategoriesForPeriod(); }
   if(tab === 'vote') { checkVotingStatus(); loadNomineesForVoting(); }
+  if(tab === 'view-noms') { loadPublicNominations(); }
   if(tab === 'admin') { loadAdminDashboard(); renderDetailedAnalysis(); renderCategoryMatrix(); }
 }
 
@@ -1268,6 +1291,50 @@ function showAdminCategory(catName, btn) {
             </tr>`).join('')}
         </tbody>
       </table></div>`;
+}
+
+// ============ PUBLIC VIEW NOMINATIONS ============
+function loadPublicNominations() {
+  const catTabs = document.getElementById('public-nom-cat-tabs');
+  catTabs.innerHTML = `<button class="cat-tab ${currentPublicCategory === 'all' ? 'active' : ''}" onclick="filterPublicNominations('all', this)">All Categories</button>` + 
+    categories.map(c => `<button class="cat-tab ${currentPublicCategory === c.name ? 'active' : ''}" onclick="filterPublicNominations('${c.name}', this)">${c.name}</button>`).join('');
+  
+  renderPublicNominations(currentPublicCategory);
+}
+
+function filterPublicNominations(category, btn) {
+  currentPublicCategory = category;
+  document.querySelectorAll('#public-nom-cat-tabs .cat-tab').forEach(t => t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderPublicNominations(category);
+}
+
+function renderPublicNominations(category) {
+  const container = document.getElementById('public-nominations-list');
+  let filtered = category === 'all' ? nominations : nominations.filter(n => n.category === category);
+  
+  if (filtered.length === 0) {
+    container.innerHTML = '<p style="color:#666; text-align:center; padding:40px; grid-column:1/-1; font-size:1.1rem;">No nominations found for this category yet.</p>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(n => `
+    <div class="nominee-card">
+      <div class="nominee-header">
+        <div class="nominee-img">
+          ${n.image ? `<img src="${n.image}" alt="${n.nomineeName}">` : '👤'}
+        </div>
+        <h3>${n.nomineeName}</h3>
+      </div>
+      <div class="nominee-body">
+        <div class="nominee-meta">
+          <div><strong>Category:</strong> ${n.category}</div>
+          <div><strong>Nominated by:</strong> ${n.leaderName} (${n.leaderDept})</div>
+        </div>
+        <p class="nominee-desc" style="white-space: pre-wrap; line-height: 1.6; margin-top: 15px;">${n.description || 'No description provided.'}</p>
+      </div>
+    </div>
+  `).join('');
 }
 
 // ============ CATEGORY SUMMARY MATRIX ============
@@ -1978,6 +2045,7 @@ async function generateNominationPDF() {
       
       const n = nomsToPrint[i];
       
+      // Header
       doc.setFillColor(109, 48, 99);
       doc.rect(0, 0, 210, 45, 'F');
       doc.setTextColor(255, 255, 255);
@@ -1990,6 +2058,7 @@ async function generateNominationPDF() {
 
       let yPos = 65;
 
+      // Photo
       if (n.image) {
         try {
           doc.addImage(n.image, 'JPEG', 75, yPos, 60, 60, undefined, 'FAST');
