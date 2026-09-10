@@ -647,7 +647,7 @@ textarea{resize:vertical;min-height:100px;}
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button class="btn btn-outline" onclick="exportData()"> Export All Data (Excel)</button>
             <button class="btn btn-outline" onclick="downloadReport()"> Download Report (Excel)</button>
-            <button class="btn btn-outline" onclick="downloadPDFReport()">📄 Download Report (PDF)</button>
+            <button class="btn btn-info" onclick="showNominationPDFModal()">📄 Download Nominations PDF Report</button>
             <button class="btn btn-danger" onclick="showResetModal()"> Reset for New Month</button>
             <button class="btn btn-danger" onclick="resetAllData()">⚠️ Delete All Data</button>
           </div>
@@ -763,6 +763,25 @@ textarea{resize:vertical;min-height:100px;}
   <button class="btn btn-outline btn-full" onclick="closeViewVoteModal()" style="margin-top:10px;">Cancel</button>
 </div></div>
 
+<div id="nomination-pdf-modal" class="modal">
+  <div class="modal-content">
+    <h2 style="color:var(--brand);margin-bottom:20px;">📄 Download Nominations PDF Report</h2>
+    <div class="form-group">
+      <label>Select Option</label>
+      <select id="pdf-report-option" onchange="togglePdfCategorySelect()">
+        <option value="all">Download All Categories</option>
+        <option value="category">Download by Category</option>
+      </select>
+    </div>
+    <div class="form-group" id="pdf-category-select-group" style="display:none;">
+      <label>Select Category</label>
+      <select id="pdf-category-select"></select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="generateNominationPDF()">Generate & Download PDF</button>
+    <button class="btn btn-outline btn-full" onclick="closeNominationPDFModal()" style="margin-top:10px;">Cancel</button>
+  </div>
+</div>
+
 <script>
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY_HERE",
@@ -793,6 +812,7 @@ let currentVoteData = null;
 let currentNominationCategory = 'all';
 let currentDetailedView = 'leader';
 let detailedAnalysisData = [];
+let nominationsExpanded = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   populatePeriodSelectors();
@@ -1129,15 +1149,34 @@ function filterNominationsByCategory(category, btn) {
   renderAdminNominations();
 }
 
+function setNominationsExpand(expand) {
+  nominationsExpanded = expand;
+  renderAdminNominations();
+}
+
 function renderAdminNominations() {
   const container = document.getElementById('admin-nominations');
   let filteredNominations = nominations;
   if(currentNominationCategory !== 'all') filteredNominations = nominations.filter(n => n.category === currentNominationCategory);
-  if(filteredNominations.length === 0) { container.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No nominations found.</p>'; return; }
+  
+  let html = `
+    <div style="display:flex; gap:10px; margin-bottom:15px;">
+      <button class="btn btn-primary btn-sm" onclick="setNominationsExpand(true)">Expand All</button>
+      <button class="btn btn-outline btn-sm" onclick="setNominationsExpand(false)">Collapse All</button>
+    </div>
+  `;
+  
+  if(filteredNominations.length === 0) { 
+    html += '<p style="color:#999;text-align:center;padding:20px;">No nominations found.</p>'; 
+    container.innerHTML = html;
+    return; 
+  }
+  
   const nomineeCatCounts = {};
   nominations.forEach(n => { const key = n.nomineeName.toLowerCase().trim() + '_' + n.category; nomineeCatCounts[key] = (nomineeCatCounts[key] || 0) + 1; });
   const bonusNominees = new Set();
-  container.innerHTML = filteredNominations.map(n => {
+  
+  html += filteredNominations.map(n => {
     const key = n.nomineeName.toLowerCase().trim() + '_' + n.category;
     const isDuplicate = nomineeCatCounts[key] > 1;
     const currentBonus = n.adminBonus || 0;
@@ -1151,22 +1190,27 @@ function renderAdminNominations() {
         </div>`;
       }
     }
+    
+    const descText = nominationsExpanded ? n.description : (n.description.length > 120 ? n.description.substring(0, 120) + '...' : n.description);
+    
     return `
     <div style="display:flex;gap:12px;padding:12px;background:#faf7fa;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--brand);">
-      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;">👤</div>'}
+      ${n.image ? `<img src="${n.image}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;">` : '<div style="width:60px;height:60px;background:#ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">👤</div>'}
       <div style="flex:1;">
         <strong style="color:var(--brand);">${n.nomineeName}</strong>
         <small style="color:#666;display:block;">${n.nomineeDept} • ${n.category}</small>
         <small style="color:#888;display:block;">By: ${n.leaderName} (${n.leaderDept})</small>
-        <small style="font-style:italic;color:#555;display:block;">"${n.description.substring(0, 60)}${n.description.length > 60 ? '...' : ''}"</small>
+        <small style="font-style:italic;color:#555;display:block; margin-top: 6px; white-space: pre-wrap; line-height: 1.5;">"${descText}"</small>
         ${bonusHtml}
       </div>
-      <div style="display:flex;gap:5px;flex-direction:column;">
+      <div style="display:flex;gap:5px;flex-direction:column;flex-shrink:0;">
         <button class="btn btn-warning btn-sm" onclick="editNomination('${n.id}')">✏️ Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteNomination('${n.id}')">🗑️ Delete</button>
       </div>
     </div>`;
   }).join('');
+  
+  container.innerHTML = html;
 }
 
 function updateAdminBonus(nomId, value, key) {
@@ -1884,6 +1928,157 @@ async function downloadPDFReport() {
     doc.save(`VotingReport_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
     showAlert('PDF report downloaded successfully!', 'success');
   } catch (error) { console.error('PDF generation error:', error); showAlert('Failed to generate PDF: ' + error.message, 'error'); }
+}
+
+function showNominationPDFModal() {
+  const select = document.getElementById('pdf-category-select');
+  select.innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  document.getElementById('nomination-pdf-modal').classList.add('active');
+}
+
+function closeNominationPDFModal() {
+  document.getElementById('nomination-pdf-modal').classList.remove('active');
+}
+
+function togglePdfCategorySelect() {
+  const option = document.getElementById('pdf-report-option').value;
+  document.getElementById('pdf-category-select-group').style.display = option === 'category' ? 'block' : 'none';
+}
+
+async function generateNominationPDF() {
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const option = document.getElementById('pdf-report-option').value;
+    let nomsToPrint = [];
+    
+    if (option === 'all') {
+      nomsToPrint = [...nominations];
+    } else {
+      const catName = document.getElementById('pdf-category-select').value;
+      nomsToPrint = nominations.filter(n => n.category === catName);
+    }
+
+    if (nomsToPrint.length === 0) {
+      showAlert('No nominations found to generate the report.', 'error');
+      return;
+    }
+
+    nomsToPrint.sort((a, b) => {
+      if (a.category === b.category) {
+        return a.nomineeName.localeCompare(b.nomineeName);
+      }
+      return a.category.localeCompare(b.category);
+    });
+
+    for (let i = 0; i < nomsToPrint.length; i++) {
+      if (i > 0) {
+        doc.addPage();
+      }
+      
+      const n = nomsToPrint[i];
+      
+      doc.setFillColor(109, 48, 99);
+      doc.rect(0, 0, 210, 45, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont("helvetica", "bold");
+      doc.text("Nomination Report", 105, 22, { align: "center" });
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${currentPeriod}`, 105, 35, { align: "center" });
+
+      let yPos = 65;
+
+      if (n.image) {
+        try {
+          doc.addImage(n.image, 'JPEG', 75, yPos, 60, 60, undefined, 'FAST');
+          yPos += 70;
+        } catch (e) {
+          console.error("Image error", e);
+          yPos += 10;
+        }
+      } else {
+        doc.setFillColor(224, 216, 224);
+        doc.roundedRect(75, yPos, 60, 60, 5, 5, 'F');
+        doc.setTextColor(109, 48, 99);
+        doc.setFontSize(30);
+        doc.text("👤", 105, yPos + 40, { align: "center" });
+        yPos += 70;
+      }
+
+      const drawSection = (title, content, subtitle = null, isLarge = false) => {
+        doc.setFillColor(245, 242, 246);
+        doc.roundedRect(20, yPos, 170, 12, 3, 3, 'F');
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(109, 48, 99);
+        doc.text(title.toUpperCase(), 25, yPos + 8);
+        yPos += 20;
+
+        doc.setFontSize(isLarge ? 14 : 14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(51, 51, 51);
+        
+        if (isLarge) {
+          const splitText = doc.splitTextToSize(content || 'N/A', 160);
+          if (yPos + (splitText.length * 7) > 270) {
+            doc.addPage();
+            yPos = 20;
+            doc.setFillColor(109, 48, 99);
+            doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.text(`${currentPeriod} (Continued)`, 105, 30, { align: "center" });
+            yPos = 60;
+            
+            doc.setFillColor(245, 242, 246);
+            doc.roundedRect(20, yPos, 170, 12, 3, 3, 'F');
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(109, 48, 99);
+            doc.text(title.toUpperCase() + " (Continued)", 25, yPos + 8);
+            yPos += 20;
+            
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 51, 51);
+          }
+          doc.text(splitText, 25, yPos);
+          yPos += (splitText.length * 7) + 15;
+        } else {
+          doc.text(content || 'N/A', 25, yPos);
+          yPos += 10;
+          if (subtitle) {
+             doc.setFontSize(12);
+             doc.setFont("helvetica", "normal");
+             doc.setTextColor(100, 100, 100);
+             doc.text(subtitle, 25, yPos);
+             yPos += 15;
+          } else {
+             yPos += 10;
+          }
+        }
+      };
+
+      drawSection("Award Category", n.category);
+      drawSection("Nominee Name", n.nomineeName, `Department: ${n.nomineeDept || 'N/A'}`, true);
+      drawSection("Nominated By", n.leaderName, `Department: ${n.leaderDept || 'N/A'}`, false);
+      drawSection("Full Nomination Story", n.description || 'No description provided.', null, true);
+    }
+
+    const fileName = option === 'all' 
+      ? `All_Nominations_Report_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+      : `Nominations_Report_${document.getElementById('pdf-category-select').value.replace(/[^a-zA-Z0-9]/g, '_')}_${currentPeriod.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      
+    doc.save(fileName);
+    closeNominationPDFModal();
+    showAlert('PDF report downloaded successfully!', 'success');
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    showAlert('Failed to generate PDF: ' + error.message, 'error');
+  }
 }
 
 function showResetModal() { document.getElementById('reset-modal').classList.add('active'); }
